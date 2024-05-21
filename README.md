@@ -19,3 +19,15 @@ DMM游戏 【少女艺术绮谭】的简体中文翻译插件
 - `translation`：是否开启翻译
 - `translation_api`：翻译请求的api地址
 - `tanslation_font`：翻译使用的字体，默认使用筑紫A丸Bold。<br>如有需要可自行用TextMeshPro打包，保证FontAsset的名称为文件名加上` SDF`即可
+
+
+**如需要关闭控制台窗口，请到`BepInEx\config\BepInEx.cfg`中更改以下内容：**
+
+```
+[Logging.Console]
+
+## Enables showing a console for log output.
+# Setting type: Boolean
+# Default value: true
+Enabled = false
+```
