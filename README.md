@@ -12,8 +12,8 @@ DMM游戏 【少女艺术绮谭】的简体中文翻译插件
 
 - 默认提供的现在只有艺术家剧情的翻译（sakura 0.9）
 - 默认请求的路径：
-	- 角色名称: API地址 + /gc/names/zh_Hans.json
-	- 故事剧情: API地址 + /gc/novels/ + 剧情ID（NovelId） + /zh_Hans.json
+	- 角色名称: API地址 + /names/zh_Hans.json
+	- 故事剧情: API地址 + /novels/ + 剧情ID（NovelId） + /zh_Hans.json
 
 ### 配置项
 - `translation`：是否开启翻译
