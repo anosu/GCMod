@@ -1,43 +1,49 @@
-﻿using System;
-using System.Text;
-using BepInEx;
-using BepInEx.Core.Logging.Interpolation;
+﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
+using System;
+using System.Text;
 
-namespace GCMod
+namespace GCMod;
+
+[BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
+public class Plugin : BasePlugin
 {
-	[BepInPlugin("GCMod", "GCMod", "11.45.14")]
-	public class Plugin : BasePlugin
-	{
-		public override void Load()
-		{
-			try
-			{
-				Console.OutputEncoding = Encoding.UTF8;
-				Plugin.Global.Log = base.Log;
-				ManualLogSource log = base.Log;
-				bool flag = true;
-				BepInExInfoLogInterpolatedStringHandler bepInExInfoLogInterpolatedStringHandler = new BepInExInfoLogInterpolatedStringHandler(18, 1, ref flag);
-				if (flag)
-				{
-					bepInExInfoLogInterpolatedStringHandler.AppendLiteral("Plugin ");
-					bepInExInfoLogInterpolatedStringHandler.AppendFormatted<string>("GCMod");
-					bepInExInfoLogInterpolatedStringHandler.AppendLiteral(" is loaded!");
-				}
-				log.LogInfo(bepInExInfoLogInterpolatedStringHandler);
-			}
-			catch (Exception)
-			{
-				Plugin.Global.Log = base.Log;
-			}
-			GCMod.Config.Read();
-			Translation.Init();
-			Patch.Initialize();
-		}
-		public class Global
-		{
-			public static ManualLogSource Log { get; set; }
-		}
-	}
+    public static new ConfigFile Config;
+    public static new ManualLogSource Log;
+
+    public override void Load()
+    {
+        try {
+            Console.OutputEncoding = Encoding.UTF8;
+        } catch (Exception)
+        {
+        }
+
+        // Plugin startup logic
+        Log = base.Log;
+        Config = base.Config;
+        Log.LogInfo(new string('-', 50));
+        Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+        Log.LogInfo("项目地址: https://github.com/anosu/GCMod");
+        Log.LogInfo(new string('-', 50));
+        GCMod.Config.Initialize();
+
+        foreach (string text in Environment.GetCommandLineArgs())
+        {
+            if (text.Equals("-o"))
+            {
+                GCMod.Config.Offline.Value = true;
+            }
+            if (text.Equals("-t"))
+            {
+                GCMod.Config.Translation.Value = true;
+            }
+        }
+
+        Patch.Initialize();
+        Translation.Initialize();
+        AddComponent<PluginBehaviour>();
+    }
 }
