@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace GCMod
 {
@@ -16,7 +17,7 @@ namespace GCMod
 				float alpha = (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt))
 					? Config.NormalAlpha.Value + 0.1f
 					: Config.NormalAlpha.Value - 0.1f;
-                Config.NormalAlpha.Value = Mathf.Clamp(alpha, 0f, 1f);
+                Config.NormalAlpha.Value = Mathf.Clamp(MathF.Round(alpha, 1), 0f, 1f);
                 if (Patch.NormalFrame != null && Patch.BaseNameFrame != null)
 				{
 					Color color1 = Patch.NormalFrame.color;
@@ -32,7 +33,7 @@ namespace GCMod
                 float alpha = (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt))
                     ? Config.CgModeAlpha.Value + 0.1f
                     : Config.CgModeAlpha.Value - 0.1f;
-                Config.CgModeAlpha.Value = Mathf.Clamp(alpha, 0f, 1f);
+                Config.CgModeAlpha.Value = Mathf.Clamp(MathF.Round(alpha, 1), 0f, 1f);
                 if (Patch.CgModeFrame != null)
                 {
                     Color color = Patch.CgModeFrame.color;
