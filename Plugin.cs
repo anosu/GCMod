@@ -30,20 +30,23 @@ public class Plugin : BasePlugin
         Log.LogInfo(new string('-', 50));
         GCMod.Config.Initialize();
 
-        foreach (string text in Environment.GetCommandLineArgs())
+        foreach (string arg in Environment.GetCommandLineArgs())
         {
-            if (text.Equals("-o"))
+            if (arg.Equals("--offline"))
             {
-                GCMod.Config.Offline.Value = true;
-            }
-            if (text.Equals("-t"))
-            {
-                GCMod.Config.Translation.Value = true;
+                GCMod.Config.offline = true;
             }
         }
 
         Patch.Initialize();
         Translation.Initialize();
+        Notification.Initialize();
         AddComponent<PluginBehaviour>();
+    }
+
+    public override bool Unload()
+    {
+        Notification.Cleanup();
+        return base.Unload();
     }
 }

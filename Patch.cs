@@ -49,7 +49,7 @@ namespace GCMod
         [HarmonyPatch(typeof(ConfigData), nameof(ConfigData.Set))]
         public static void SetApiDomain(string key, ref string value)
         {
-            if (!Config.Offline.Value)
+            if (!Config.offline && !Config.Offline.Value)
             {
                 return;
             }

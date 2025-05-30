@@ -5,6 +5,7 @@ namespace GCMod
 {
     public class Config
     {
+        public static bool offline;
         public static ConfigEntry<bool> Offline;
         public static ConfigEntry<string> OfflineCDN;
         public static ConfigEntry<bool> Translation;

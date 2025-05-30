@@ -10,7 +10,8 @@ namespace GCMod
             if (Input.GetKeyDown(KeyCode.F5))
 			{
 				Config.ModifyText.Value = !Config.ModifyText.Value;
-			}
+                Notification.Show($"[{Config.ModifyText.Definition.Section}]", $"{Config.ModifyText.Definition.Key} => {Config.ModifyText.Value}");
+            }
 
 			if (Input.GetKeyDown(KeyCode.F6))
 			{
@@ -45,13 +46,15 @@ namespace GCMod
 			if (Input.GetKeyDown(KeyCode.F8))
 			{
 				Config.Translation.Value = !Config.Translation.Value;
-			}
+                Notification.Show($"[{Config.Translation.Definition.Section}]", $"{Config.Translation.Definition.Key} => {Config.Translation.Value}");
+            }
 
             if (Input.GetKeyDown(KeyCode.F10))
             {
                 Plugin.Config.Reload();
                 Plugin.Log.LogInfo("Config reloaded");
+                Notification.Show("Config", "Reloaded successfully");
             }
         }
-	}
+    }
 }
