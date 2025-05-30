@@ -7,6 +7,7 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using UnityEngine;
 using TMPro;
+using BepInEx.Unity.IL2CPP.Utils;
 
 namespace GCMod
 {
@@ -24,7 +25,7 @@ namespace GCMod
 		{
 			cdn = Config.TranslationCDN.Value;
 			LoadTranslation();
-            LoadFontAsset();
+            Plugin.Instance.StartCoroutine(LoadFontAsset());
 		}
 
 		public static async Task<T> GetAsync<T>(string url) where T : class
@@ -90,19 +91,22 @@ namespace GCMod
             fontBundle = AssetBundle.LoadFromFile(bundlePath);
         }
 
-        public static void LoadFontAsset()
+        public static System.Collections.IEnumerator LoadFontAsset()
         {
             if (fontAsset != null || !Config.Translation.Value)
             {
-                return;
+                yield break;
             }
             LoadFontBundle();
             if (fontBundle == null)
             {
                 Plugin.Log.LogError("Font bundle load failed");
-                return;
+                yield break;
             }
-            fontAsset = fontBundle.LoadAsset(Config.FontAssetName.Value).TryCast<TMP_FontAsset>();
+            var request = fontBundle.LoadAssetAsync(Config.FontAssetName.Value);
+            yield return request;
+
+            fontAsset = request.asset.TryCast<TMP_FontAsset>();
             Plugin.Log.LogInfo($"TMP_FontAsset {fontAsset.name} is loaded");
         }
 

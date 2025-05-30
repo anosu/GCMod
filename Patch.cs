@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using BepInEx.Unity.IL2CPP.Utils;
 using DMM.OLG.Unity.Engine.Internal;
 using DMM.OLG.Unity.Extensions.Novel;
 using Gc;
@@ -81,7 +82,7 @@ namespace GCMod
             }
             if (Translation.fontAsset == null)
             {
-                Translation.LoadFontAsset();
+                Plugin.Instance.StartCoroutine(Translation.LoadFontAsset());
             }
         }
 
@@ -246,8 +247,8 @@ namespace GCMod
 			{
 				if (Translation.fontAsset == null)
 				{
-					Translation.LoadFontAsset();
-				}
+                    Plugin.Instance.StartCoroutine(Translation.LoadFontAsset());
+                }
 				if (originalFontAsset == null)
 				{
 					originalFontAsset = __instance._wordText.font;

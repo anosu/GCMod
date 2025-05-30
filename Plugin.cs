@@ -4,6 +4,7 @@ using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
 using System;
 using System.Text;
+using UnityEngine;
 
 namespace GCMod;
 
@@ -12,6 +13,7 @@ public class Plugin : BasePlugin
 {
     public static new ConfigFile Config;
     public static new ManualLogSource Log;
+    public static MonoBehaviour Instance;
 
     public override void Load()
     {
@@ -39,9 +41,9 @@ public class Plugin : BasePlugin
         }
 
         Patch.Initialize();
-        Translation.Initialize();
         Notification.Initialize();
-        AddComponent<PluginBehaviour>();
+        Instance = AddComponent<PluginBehaviour>();
+        Translation.Initialize();
     }
 
     public override bool Unload()
