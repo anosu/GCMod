@@ -8,6 +8,8 @@ namespace GCMod
         public static bool offline;
         public static ConfigEntry<bool> Offline;
         public static ConfigEntry<string> OfflineCDN;
+        public static ConfigEntry<int> FrameRate;
+        public static ConfigEntry<bool> IsSkipCutin;
         public static ConfigEntry<bool> Translation;
         public static ConfigEntry<string> TranslationCDN;
         public static ConfigEntry<bool> AsyncMode;
@@ -31,7 +33,9 @@ namespace GCMod
         public static void Initialize()
         {
             Offline = Plugin.Config.Bind("Debug.Offline", "Enabled", false, "API localization for debug");
-            OfflineCDN = Plugin.Config.Bind("Debug.Offline", "CDN", "http://localhost:33333/gc", "CDN for debug");
+            OfflineCDN = Plugin.Config.Bind("Debug.Offline", "CDN", "http://localhost:33333/gc/", "CDN for debug");
+            FrameRate = Plugin.Config.Bind("General", "FrameRate", 60, "游戏帧率（正整数）");
+            IsSkipCutin = Plugin.Config.Bind("Battle", "IsSkipCutin", false, "是否跳过大招动画（包括变身和释放动画）");
             Translation = Plugin.Config.Bind("Translation", "Enabled", true, "是否开启游戏内剧情翻译");
             TranslationCDN = Plugin.Config.Bind("Translation", "CDN", "https://girlscreation.ntr.best", "翻译加载的CDN");
             AsyncMode = Plugin.Config.Bind("Translation", "AsyncMode", false, "异步请求翻译（不会造成加载界面卡顿，但翻译可能延迟显示）");
@@ -59,6 +63,8 @@ namespace GCMod
             }
             Plugin.Log.LogInfo($"Translation: {Translation.Value}");
             Plugin.Log.LogInfo($"TranslationCDN: {TranslationCDN.Value}");
+            Plugin.Log.LogInfo($"FrameRate: {FrameRate.Value}");
+            Plugin.Log.LogInfo($"IsSkipCutin: {IsSkipCutin.Value}");
             Plugin.Log.LogInfo($"AsyncMode: {AsyncMode.Value}");
             Plugin.Log.LogInfo($"FontBundlePath: {FontBundlePath.Value}");
             Plugin.Log.LogInfo($"FontAssetName: {FontAssetName.Value}");

@@ -7,6 +7,12 @@ namespace GCMod
 	{
 		private void Update()
 		{
+            if (Input.GetKeyDown(KeyCode.F3))
+            {
+                Config.IsSkipCutin.Value = !Config.IsSkipCutin.Value;
+                Notification.Show($"[{Config.IsSkipCutin.Definition.Section}]", $"{Config.IsSkipCutin.Definition.Key} => {Config.IsSkipCutin.Value}");
+            }
+
             if (Input.GetKeyDown(KeyCode.F5))
 			{
 				Config.ModifyText.Value = !Config.ModifyText.Value;

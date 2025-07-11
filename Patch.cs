@@ -3,6 +3,7 @@ using BepInEx.Unity.IL2CPP.Utils;
 using DMM.OLG.Unity.Engine.Internal;
 using DMM.OLG.Unity.Extensions.Novel;
 using Gc;
+using Gc.Battle.SkillWidget;
 using Gc.Home;
 using HarmonyLib;
 using TMPro;
@@ -268,5 +269,28 @@ namespace GCMod
             }
 		}
 
-	}
+        // Skip cutin
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(CutInMoviePlayer), nameof(CutInMoviePlayer.PlayAsync))]
+        public static void SkipCutin(CutInMoviePlayer __instance)
+        {
+            if (Config.IsSkipCutin.Value)
+            {
+                __instance.Skip();
+            }
+        }
+
+        // Change FPS
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(GcOptionData), nameof(GcOptionData.SetPowerSaving))]
+        public static void ChangeFrameRate()
+        {
+            int fps = Config.FrameRate.Value;
+            if (fps > 0)
+            {
+                GcOptionData.ChangeApplicationTargetFrameRate(fps);
+            }
+        }
+
+    }
 }

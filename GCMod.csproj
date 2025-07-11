@@ -1,10 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <GameDir>E:\Games\DMM GAMES\girlscreation_r</GameDir>
+    <Authors>Jitsu</Authors>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>GCMod</AssemblyName>
     <Product>GCMod</Product>
-    <Version>6.0.1</Version>
+    <Version>6.1.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
@@ -13,7 +18,7 @@
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>GCMod</RootNamespace>
-    <BaseOutputPath>E:\Games\DMM GAMES\girlscreation_r\BepInEx\plugins</BaseOutputPath>
+    <BaseOutputPath>$(GameDir)\BepInEx\plugins</BaseOutputPath>
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
   </PropertyGroup>
 
@@ -25,12 +30,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>none</DebugType>
     <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
-  </PropertyGroup>
-
-   <PropertyGroup>
-    <GameDir>E:\Games\DMM GAMES\girlscreation_r</GameDir>
-    <PackageId></PackageId>
-    <Authors>Jitsu</Authors>
   </PropertyGroup>
 
   <ItemGroup>
