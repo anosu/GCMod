@@ -33,10 +33,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <GameDlls Include="&#xD;&#xA;		      $(GameDir)\BepInEx\interop\Assembly-CSharp.dll;&#xD;&#xA;		      $(GameDir)\BepInEx\interop\Il2Cpp*.dll;&#xD;&#xA;		      $(GameDir)\BepInEx\interop\Unity*.dll">
+    <GameDlls Include="$(GameDir)\BepInEx\interop\*.dll">
     </GameDlls>
     <Reference Include="@(GameDlls)">
       <Private>false</Private>
+    </Reference>
+    <Reference Include="Utility">
+      <HintPath>..\..\Utility\bin\Release\netstandard2.1\Utility.dll</HintPath>
+      <Private>True</Private>
     </Reference>
   </ItemGroup>
 
