@@ -9,7 +9,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>GCMod</AssemblyName>
     <Product>GCMod</Product>
-    <Version>6.1.0</Version>
+    <Version>6.1.1</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
