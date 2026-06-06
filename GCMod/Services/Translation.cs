@@ -5,7 +5,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -17,6 +16,7 @@ namespace GCMod
     {
         public static string cdn = "http://localhost:5000";
         public static readonly HttpClient client = new();
+        public static TranslationCache TranslationCache;
         public static Dictionary<string, string> names = [];
         public static Dictionary<string, string> words = [];
         public static Dictionary<int, Dictionary<string, string>> novels = [];
@@ -26,24 +26,10 @@ namespace GCMod
         public static void Initialize()
         {
             cdn = Config.TranslationCDN.Value;
+            var cacheDir = Path.Combine(Paths.PluginPath, "GCMod", "cache");
+            TranslationCache = new TranslationCache(cdn, cacheDir, Config.TranslationLanguage.Value, client);
             Plugin.Instance.StartCoroutine(LoadFontAsset());
             _ = LoadTranslation();
-        }
-
-        public static async Task<T> GetAsync<T>(string url) where T : class
-        {
-            try
-            {
-                var response = await client.GetAsync(url);
-                if (response.IsSuccessStatusCode)
-                    return await response.Content.ReadFromJsonAsync<T>();
-            }
-            catch (Exception e)
-            {
-                Plugin.Log.LogError($"Error: {e.Message}");
-                Toast.Error("网络错误", e.Message);
-            }
-            return null;
         }
 
         public static void LoadFontBundle()
@@ -93,8 +79,12 @@ namespace GCMod
         {
             if (!Config.Translation.Value) return;
 
-            var nameTask = GetAsync<Dictionary<string, string>>($"{cdn}/names/zh_Hans.json");
-            var wordTask = GetAsync<Dictionary<string, string>>($"{cdn}/words/zh_Hans.json");
+            // First fetch manifest to get expected hashes for cache validation
+            await TranslationCache.FetchManifestAsync();
+
+            // Then load names and words with cache-aware logic
+            var nameTask = TranslationCache.LoadAsync("names");
+            var wordTask = TranslationCache.LoadAsync("words");
             await Task.WhenAll(nameTask, wordTask);
 
             if (nameTask.Result != null)
@@ -124,7 +114,7 @@ namespace GCMod
         {
             if (novels.ContainsKey(novelId)) return;
 
-            var translations = await GetAsync<Dictionary<string, string>>($"{cdn}/novels/{novelId}/zh_Hans.json");
+            var translations = await TranslationCache.LoadAsync("novels", novelId.ToString());
             if (translations != null)
             {
                 novels[novelId] = translations;

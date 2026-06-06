@@ -9,7 +9,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>GCMod</AssemblyName>
     <Product>GCMod</Product>
-    <Version>6.1.1</Version>
+    <Version>6.2.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
@@ -18,7 +18,7 @@
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>GCMod</RootNamespace>
-    <BaseOutputPath>$(GameDir)\BepInEx\plugins</BaseOutputPath>
+    <BaseOutputPath>$(GameDir)\BepInEx\plugins\$(Product)</BaseOutputPath>
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
   </PropertyGroup>
 

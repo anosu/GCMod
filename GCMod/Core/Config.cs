@@ -15,6 +15,7 @@ namespace GCMod
         public static ConfigEntry<bool> IsSkipCutin;
         public static ConfigEntry<bool> Translation;
         public static ConfigEntry<string> TranslationCDN;
+        public static ConfigEntry<string> TranslationLanguage;
         public static ConfigEntry<bool> AsyncMode;
         public static ConfigEntry<string> FontBundlePath;
         public static ConfigEntry<string> FontAssetName;
@@ -42,9 +43,10 @@ namespace GCMod
             FrameRate = Plugin.ConfigFile.Bind("General", "FrameRate", 60, "游戏帧率（正整数）");
             IsSkipCutin = Plugin.ConfigFile.Bind("Battle", "IsSkipCutin", false, "是否跳过大招动画（包括变身和释放动画）");
             Translation = Plugin.ConfigFile.Bind("Translation", "Enabled", true, "是否开启游戏内剧情翻译");
-            TranslationCDN = Plugin.ConfigFile.Bind("Translation", "CDN", "https://girlscreation.ntr.best", "翻译加载的CDN");
+            TranslationCDN = Plugin.ConfigFile.Bind("Translation", "CDN", "https://raw.githubusercontent.com/anosu/girlscreaionr-translation/refs/heads/main", "翻译加载的CDN");
+            TranslationLanguage = Plugin.ConfigFile.Bind("Translation", "Language", "zh_Hans", "翻译语言，取值范围：[zh_Hans]");
             AsyncMode = Plugin.ConfigFile.Bind("Translation", "AsyncMode", false, "异步请求翻译（不会造成加载界面卡顿，但翻译可能延迟显示）");
-            FontBundlePath = Plugin.ConfigFile.Bind("Translation.Font", "AssetBundlePath", "font/TsukuARdGothic-Std-Bold", "TMP字体AssetBundle的路径，默认相对于插件目录，也可使用绝对路径");
+            FontBundlePath = Plugin.ConfigFile.Bind("Translation.Font", "AssetBundlePath", "GCMod/fonts/TsukuARdGothic-Std-Bold", "TMP字体AssetBundle的路径，默认相对于插件目录，也可使用绝对路径");
             FontAssetName = Plugin.ConfigFile.Bind("Translation.Font", "AssetName", "TsukuARdGothic-Std-Bold SDF", "AssetBundle中TMP_FontAsset的名称");
             NormalAlpha = Plugin.ConfigFile.Bind("Message.Window", "NormalAlpha", 0f, "普通剧情中的对话框透明度，默认完全透明");
             CgModeAlpha = Plugin.ConfigFile.Bind("Message.Window", "CgModeAlpha", 0f, "寝室剧情中的对话框透明度，默认完全透明");
