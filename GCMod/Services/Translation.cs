@@ -41,7 +41,7 @@ namespace GCMod
             catch (Exception e)
             {
                 Plugin.Log.LogError($"Error: {e.Message}");
-                ToastUI.Instance.Error("网络错误", e.Message);
+                Toast.Error("网络错误", e.Message);
             }
             return null;
         }
@@ -55,7 +55,7 @@ namespace GCMod
             if (!File.Exists(bundlePath))
             {
                 Plugin.Log.LogError("FontBundle path does not exist");
-                ToastUI.Instance.Error("加载失败", "字体AB包路径不存在");
+                Toast.Error("加载失败", "字体AB包路径不存在");
                 return;
             }
             fontBundle = AssetBundle.LoadFromFile(bundlePath);
@@ -70,7 +70,7 @@ namespace GCMod
             if (fontBundle == null)
             {
                 Plugin.Log.LogError("Font bundle load failed");
-                ToastUI.Instance.Error("加载失败", "字体AB包加载失败");
+                Toast.Error("加载失败", "字体AB包加载失败");
                 yield break;
             }
 
@@ -81,7 +81,7 @@ namespace GCMod
             if (fontAsset == null)
             {
                 Plugin.Log.LogError("TMP font asset load failed");
-                ToastUI.Instance.Error("加载失败", "TMP字体资源加载失败");
+                Toast.Error("加载失败", "TMP字体资源加载失败");
             }
             else
             {
@@ -105,7 +105,7 @@ namespace GCMod
             else
             {
                 Plugin.Log.LogWarning("Character names translation load failed");
-                ToastUI.Instance.Warn("加载失败", "角色名称翻译加载失败");
+                Toast.Warn("加载失败", "角色名称翻译加载失败");
             }
 
             if (wordTask.Result != null)
@@ -116,7 +116,7 @@ namespace GCMod
             else
             {
                 Plugin.Log.LogWarning("Character words translation load failed");
-                ToastUI.Instance.Warn("加载失败", "角色台词翻译加载失败");
+                Toast.Warn("加载失败", "角色台词翻译加载失败");
             }
         }
 
@@ -133,7 +133,7 @@ namespace GCMod
             else
             {
                 Plugin.Log.LogWarning($"Translations loaded failed: {novelId}");
-                ToastUI.Instance.Warn("加载失败", $"剧本ID: {novelId}");
+                Toast.Warn("加载失败", $"剧本ID: {novelId}");
             }
         }
     }

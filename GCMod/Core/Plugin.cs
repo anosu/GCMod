@@ -38,12 +38,12 @@ public class Plugin : BasePlugin
         Instance = AddComponent<InputHandler>();
         Translation.Initialize();
 
-        ToastUI.Instance.Success(MyPluginInfo.PLUGIN_NAME, $"Mod 加载成功，版本: {MyPluginInfo.PLUGIN_VERSION}");
+        Toast.Success(MyPluginInfo.PLUGIN_NAME, $"Mod 加载成功，版本: {MyPluginInfo.PLUGIN_VERSION}");
     }
 
     public override bool Unload()
     {
-        ToastUI.Instance.Clear();
+        Toast.Clear();
         return base.Unload();
     }
 }

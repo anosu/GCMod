@@ -39,7 +39,7 @@
       <Private>false</Private>
     </Reference>
     <Reference Include="Utility">
-      <HintPath>..\..\Utility\bin\Release\netstandard2.1\Utility.dll</HintPath>
+      <HintPath>..\..\Utility\Utility\bin\Release\netstandard2.1\Utility.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>

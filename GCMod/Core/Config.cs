@@ -69,7 +69,7 @@ namespace GCMod
             {
                 var c = e.ChangedSetting;
                 Plugin.Log.LogInfo($"[{c.Definition.Section}] {c.Definition.Key} => {c.BoxedValue}");
-                ToastUI.Instance.Info($"[{c.Definition.Section}]", $"{c.Definition.Key} => {c.BoxedValue}");
+                Toast.Info($"[{c.Definition.Section}]", $"{c.Definition.Key} => {c.BoxedValue}");
             };
         }
 
