@@ -22,14 +22,23 @@ namespace GCMod
         public static Dictionary<int, Dictionary<string, string>> novels = [];
         public static AssetBundle fontBundle = null;
         public static TMP_FontAsset fontAsset = null;
+        private static bool fontAssetLoading;
 
         public static void Initialize()
         {
             cdn = Config.TranslationCDN.Value;
             var cacheDir = Path.Combine(Paths.PluginPath, "GCMod", "cache");
             TranslationCache = new TranslationCache(cdn, cacheDir, Config.TranslationLanguage.Value, client);
-            Plugin.Instance.StartCoroutine(LoadFontAsset());
+            EnsureFontAssetLoading();
             _ = LoadTranslation();
+        }
+
+        public static void EnsureFontAssetLoading()
+        {
+            if (fontAsset != null || fontAssetLoading || !Config.Translation.Value)
+                return;
+
+            Plugin.Instance.StartCoroutine(LoadFontAsset());
         }
 
         public static void LoadFontBundle()
@@ -52,11 +61,13 @@ namespace GCMod
             if (fontAsset != null || !Config.Translation.Value)
                 yield break;
 
+            fontAssetLoading = true;
             LoadFontBundle();
             if (fontBundle == null)
             {
                 Plugin.Log.LogError("Font bundle load failed");
                 Toast.Error("加载失败", "字体AB包加载失败");
+                fontAssetLoading = false;
                 yield break;
             }
 
@@ -73,6 +84,7 @@ namespace GCMod
             {
                 Plugin.Log.LogInfo($"TMP_FontAsset {fontAsset.name} is loaded");
             }
+            fontAssetLoading = false;
         }
 
         public static async Task LoadTranslation()
