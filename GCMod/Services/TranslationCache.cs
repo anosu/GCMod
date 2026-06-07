@@ -97,12 +97,18 @@ namespace GCMod
                 {
                     var json = await response.Content.ReadAsStringAsync();
                     _manifest = JsonSerializer.Deserialize<ManifestData>(json);
+                    if (_manifest == null)
+                    {
+                        Plugin.Log.LogWarning("Remote manifest parse returned null");
+                    }
+                    else
+                    {
+                        // Persist manifest to local cache
+                        await File.WriteAllTextAsync(path, json, Utf8);
 
-                    // Persist manifest to local cache
-                    await File.WriteAllTextAsync(path, json, Utf8);
-
-                    Plugin.Log.LogInfo($"Manifest loaded ({_language}). Hash: {_manifest?.Hash}");
-                    return;
+                        Plugin.Log.LogInfo($"Manifest loaded ({_language}). Hash: {_manifest.Hash}");
+                        return;
+                    }
                 }
                 Plugin.Log.LogWarning($"Manifest fetch returned {response.StatusCode}");
             }
@@ -126,8 +132,15 @@ namespace GCMod
                 {
                     var json = File.ReadAllText(path, Utf8);
                     _manifest = JsonSerializer.Deserialize<ManifestData>(json);
-                    Plugin.Log.LogInfo($"Loaded cached manifest from local ({_language}). Hash: {_manifest?.Hash}");
-                    Toast.Warn("翻译服务", "无法连接远程，使用本地翻译清单");
+                    if (_manifest != null)
+                    {
+                        Plugin.Log.LogInfo($"Loaded cached manifest from local ({_language}). Hash: {_manifest.Hash}");
+                        Toast.Warn("翻译服务", "无法连接远程，使用本地翻译清单");
+                    }
+                    else
+                    {
+                        Plugin.Log.LogWarning("Cached manifest parse returned null");
+                    }
                 }
                 catch (Exception e)
                 {
@@ -270,12 +283,24 @@ namespace GCMod
 
         private static Dictionary<string, string> LoadFromFile(string path)
         {
-            var json = File.ReadAllText(path, Utf8);
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            try
+            {
+                var json = File.ReadAllText(path, Utf8);
+                return JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"Failed to load translation cache {path}: {e.Message}");
+                return null;
+            }
         }
 
         private static void SaveToFile(string path, Dictionary<string, string> data)
         {
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+
             var json = JsonSerializer.Serialize(data, HashJsonOptions);
             File.WriteAllText(path, json, Utf8);
         }
