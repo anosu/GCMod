@@ -3,7 +3,7 @@ using UnityEngine;
 namespace GCMod.Services;
 
 /// <summary>
-/// 对话框透明度控制工具。
+/// 对话框透明度工具。
 /// </summary>
 public static class AlphaController
 {

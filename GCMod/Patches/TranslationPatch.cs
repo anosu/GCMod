@@ -21,17 +21,17 @@ public static class TranslationPatch
         if (!Config.Translation.Value) return;
 
         Plugin.Log.LogInfo($"Prefix: {prefix}, Id: {id}");
-        Patch.NovelId = int.Parse(id);
+        PatchManager.NovelId = int.Parse(id);
 
-        if (!TranslationService.Novels.ContainsKey(Patch.NovelId))
+        if (!Mod.Translation.Novels.ContainsKey(PatchManager.NovelId))
         {
-            Task task = TranslationService.GetNovelTranslationAsync(Patch.NovelId);
+            Task task = Mod.Translation.GetNovelTranslationAsync(PatchManager.NovelId);
             if (!Config.AsyncMode.Value)
                 task.Wait();
         }
 
-        if (!Services.FontLoader.IsFontValid())
-            Services.FontLoader.EnsureLoaded();
+        if (!Mod.Font.IsFontValid())
+            Mod.Font.EnsureLoaded();
     }
 
     /// <summary>
@@ -43,7 +43,7 @@ public static class TranslationPatch
     {
         if (!Config.Translation.Value) return;
 
-        if (Patch.TryGetCurrentNovel(out var translation))
+        if (PatchManager.TryGetCurrentNovel(out var translation))
         {
             if (translation.TryGetValue(__instance._TitleMain.text, out string title))
                 __instance._TitleMain.text = title;
@@ -59,9 +59,9 @@ public static class TranslationPatch
     {
         if (!Config.Translation.Value) return;
 
-        if (Patch.TryGetCurrentNovel(out _))
+        if (PatchManager.TryGetCurrentNovel(out _))
         {
-            if (TranslationService.Names.TryGetValue(text, out string name))
+            if (Mod.Translation.Names.TryGetValue(text, out string name))
                 text = name;
         }
     }
@@ -73,7 +73,7 @@ public static class TranslationPatch
     [HarmonyPatch(typeof(EventText), nameof(EventText.Parse))]
     public static void SetMessageText(EventText __instance, ref string message)
     {
-        if (Patch.TryGetCurrentNovel(out var translation))
+        if (PatchManager.TryGetCurrentNovel(out var translation))
         {
             if (translation.TryGetValue(message, out string text))
                 message = text;

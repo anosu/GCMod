@@ -19,7 +19,7 @@ public static class HomeWordPatch
     {
         if (!Config.Translation.Value) return;
 
-        if (TranslationService.Words.TryGetValue(__result, out string text))
+        if (Mod.Translation.Words.TryGetValue(__result, out string text))
             __result = text;
     }
 
@@ -32,13 +32,13 @@ public static class HomeWordPatch
     {
         if (Config.Translation.Value)
         {
-            if (!Services.FontLoader.IsFontValid())
-                Services.FontLoader.EnsureLoaded();
+            if (!Mod.Font.IsFontValid())
+                Mod.Font.EnsureLoaded();
 
             if (VisualPatch.OriginalFontAsset == null)
                 VisualPatch.OriginalFontAsset = __instance._wordText.font;
 
-            __instance._wordText.font = Services.FontLoader.FontAsset;
+            __instance._wordText.font = Mod.Font.FontAsset;
             __instance._wordText.lineSpacing = 24f;
             __instance._wordText.paragraphSpacing = 8f;
         }

@@ -8,20 +8,39 @@ namespace GCMod
     public static class Config
     {
 #if DEBUG
+        #region Debug
         public static ConfigEntry<bool> Offline;
         public static ConfigEntry<string> OfflineCDN;
         public static bool OfflineStartup;
+        #endregion
 #endif
+
+        #region General
         public static ConfigEntry<int> FrameRate;
+        #endregion
+
+        #region Battle
         public static ConfigEntry<bool> IsSkipCutin;
+        #endregion
+
+        #region Translation
         public static ConfigEntry<bool> Translation;
         public static ConfigEntry<string> TranslationCDN;
         public static ConfigEntry<string> TranslationLanguage;
         public static ConfigEntry<bool> AsyncMode;
+        #endregion
+
+        #region Font
         public static ConfigEntry<string> FontBundlePath;
         public static ConfigEntry<string> FontAssetName;
+        #endregion
+
+        #region MessageWindow
         public static ConfigEntry<float> NormalAlpha;
         public static ConfigEntry<float> CgModeAlpha;
+        #endregion
+
+        #region MessageText
         public static ConfigEntry<bool> ModifyText;
         public static ConfigEntry<string> NameTextColorHex;
         public static ConfigEntry<string> MessageTextColorHex;
@@ -30,6 +49,7 @@ namespace GCMod
         public static ConfigEntry<float> OutlineWidth;
         public static ConfigEntry<float> OutlineSoftness;
         public static ConfigEntry<float> CharacterSpacing;
+        #endregion
 
         public static Color NameTextColor = Color.white;
         public static Color MessageTextColor = Color.white;
@@ -45,19 +65,38 @@ namespace GCMod
         private static void BindAllEntries()
         {
 #if DEBUG
+            #region Debug
             Offline = Plugin.ConfigFile.Bind("Debug.Offline", "Enabled", false, "API localization for debug");
             OfflineCDN = Plugin.ConfigFile.Bind("Debug.Offline", "CDN", "http://localhost:33333/gc/", "CDN for debug");
+            #endregion
 #endif
+
+            #region General
             FrameRate = Plugin.ConfigFile.Bind("General", "FrameRate", 60, "游戏帧率（正整数）");
+            #endregion
+
+            #region Battle
             IsSkipCutin = Plugin.ConfigFile.Bind("Battle", "IsSkipCutin", false, "是否跳过大招动画（包括变身和释放动画）");
+            #endregion
+
+            #region Translation
             Translation = Plugin.ConfigFile.Bind("Translation", "Enabled", true, "是否开启游戏内剧情翻译");
             TranslationCDN = Plugin.ConfigFile.Bind("Translation", "CDN", "https://raw.githubusercontent.com/anosu/girlscreaionr-translation/refs/heads/main", "翻译加载的CDN");
             TranslationLanguage = Plugin.ConfigFile.Bind("Translation", "Language", "zh_Hans", "翻译语言，取值范围：[zh_Hans]");
             AsyncMode = Plugin.ConfigFile.Bind("Translation", "AsyncMode", false, "异步请求翻译（不会造成加载界面卡顿，但翻译可能延迟显示）");
+            #endregion
+
+            #region Font
             FontBundlePath = Plugin.ConfigFile.Bind("Translation.Font", "AssetBundlePath", "GCMod/fonts/TsukuARdGothic-Std-Bold", "TMP字体AssetBundle的路径，默认相对于插件目录，也可使用绝对路径");
             FontAssetName = Plugin.ConfigFile.Bind("Translation.Font", "AssetName", "TsukuARdGothic-Std-Bold SDF", "AssetBundle中TMP_FontAsset的名称");
+            #endregion
+
+            #region MessageWindow
             NormalAlpha = Plugin.ConfigFile.Bind("Message.Window", "NormalAlpha", 0f, "普通剧情中的对话框透明度，默认完全透明");
             CgModeAlpha = Plugin.ConfigFile.Bind("Message.Window", "CgModeAlpha", 0f, "寝室剧情中的对话框透明度，默认完全透明");
+            #endregion
+
+            #region MessageText
             ModifyText = Plugin.ConfigFile.Bind("Message.Text", "Modified", true, "是否更改对话框文本样式（用于对话框透明时提高对比度）");
             NameTextColorHex = Plugin.ConfigFile.Bind("Message.Text", "NameColor", "FFFFFFFF", "对话框人物名文本颜色");
             MessageTextColorHex = Plugin.ConfigFile.Bind("Message.Text", "MessageColor", "FFFFFFFF", "对话框消息文本颜色");
@@ -66,6 +105,7 @@ namespace GCMod
             OutlineWidth = Plugin.ConfigFile.Bind("Message.Text", "OutlineWidth", 0.3f, "文本描边宽度，取值范围：[0, 1]");
             OutlineSoftness = Plugin.ConfigFile.Bind("Message.Text", "OutlineSoftness", 0.01f, "文本描边羽化程度，取值范围：[0, 1]");
             CharacterSpacing = Plugin.ConfigFile.Bind("Message.Text", "CharacterSpacing", 0f, "字间距，仅对消息文本设置，不应用于人物名");
+            #endregion
         }
 
         /// <summary>

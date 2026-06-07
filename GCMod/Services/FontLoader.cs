@@ -1,8 +1,10 @@
 using BepInEx;
 using BepInEx.Unity.IL2CPP.Utils;
+using GCMod.Interfaces;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using Utility.Toast;
 
 namespace GCMod.Services;
 
@@ -10,16 +12,16 @@ namespace GCMod.Services;
 /// 翻译字体加载器，负责 AssetBundle 加载和 TMP_FontAsset 创建。
 /// 字体资源在加载后会标记为跨场景持久化，场景切换不会失效。
 /// </summary>
-public static class FontLoader
+public class FontLoader : IFontProvider
 {
-    public static AssetBundle FontBundle { get; private set; }
-    public static TMP_FontAsset FontAsset { get; private set; }
-    private static bool _isLoading;
+    public AssetBundle FontBundle { get; private set; }
+    public TMP_FontAsset FontAsset { get; private set; }
+    private bool _isLoading;
 
     /// <summary>
     /// 确保字体已加载且有效。若已加载但场景切换导致失效，自动重新加载。
     /// </summary>
-    public static void EnsureLoaded()
+    public void EnsureLoaded()
     {
         if (!Config.Translation.Value) return;
 
@@ -43,7 +45,7 @@ public static class FontLoader
     /// 校验字体资源是否真实有效（不仅仅是非 null）。
     /// 场景切换后 Unity 可能销毁底层纹理/材质，导致 C# 引用变成"假空"。
     /// </summary>
-    public static bool IsFontValid()
+    public bool IsFontValid()
     {
         if (FontAsset == null) return false;
 
@@ -54,20 +56,20 @@ public static class FontLoader
         return true;
     }
 
-    public static void LoadFontBundle(string bundlePath)
+    public void LoadFontBundle(string bundlePath)
     {
         if (FontBundle != null) return;
 
         if (!System.IO.File.Exists(bundlePath))
         {
             ModLogger.Error("FontBundle path does not exist");
-            Utility.Toast.Toast.Error("加载失败", "字体AB包路径不存在");
+            Toast.Error("加载失败", "字体AB包路径不存在");
             return;
         }
         FontBundle = AssetBundle.LoadFromFile(bundlePath);
     }
 
-    private static IEnumerator LoadFontAssetCoroutine()
+    private IEnumerator LoadFontAssetCoroutine()
     {
         if (IsFontValid() || !Config.Translation.Value)
             yield break;
@@ -84,7 +86,7 @@ public static class FontLoader
         if (FontBundle == null)
         {
             ModLogger.Error("Font bundle load failed");
-            Utility.Toast.Toast.Error("加载失败", "字体AB包加载失败");
+            Toast.Error("加载失败", "字体AB包加载失败");
             _isLoading = false;
             yield break;
         }
@@ -96,7 +98,7 @@ public static class FontLoader
         if (FontAsset == null)
         {
             ModLogger.Error("TMP font asset load failed");
-            Utility.Toast.Toast.Error("加载失败", "TMP字体资源加载失败");
+            Toast.Error("加载失败", "TMP字体资源加载失败");
         }
         else
         {

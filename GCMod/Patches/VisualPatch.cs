@@ -60,8 +60,8 @@ public static class VisualPatch
     public static void SetMessageTitleFont(EventTitle __instance)
     {
         if (!Config.Translation.Value) return;
-        if (Patch.TryGetCurrentNovel(out _))
-            Patch.ApplyTranslationFont(__instance._TitleMain);
+        if (PatchManager.TryGetCurrentNovel(out _))
+            PatchManager.ApplyTranslationFont(__instance._TitleMain);
     }
 
     /// <summary>
@@ -71,8 +71,8 @@ public static class VisualPatch
     [HarmonyPatch(typeof(EventMessage), nameof(EventMessage.SetName))]
     public static void SetMessageNameFont(EventMessage __instance)
     {
-        if (Patch.TryGetCurrentNovel(out _))
-            Patch.ApplyTranslationFont(__instance.MessageName);
+        if (PatchManager.TryGetCurrentNovel(out _))
+            PatchManager.ApplyTranslationFont(__instance.MessageName);
 
         if (Config.ModifyText.Value)
             ModifyText(__instance.MessageName, Config.NameTextColor);
@@ -87,8 +87,8 @@ public static class VisualPatch
     [HarmonyPatch(typeof(EventText), nameof(EventText.SetRuby))]
     public static void SetMessageTextFont(GameObject go, EventText.Letter letter, ref TextMeshProUGUI text)
     {
-        if (Patch.TryGetCurrentNovel(out _))
-            Patch.ApplyTranslationFont(text);
+        if (PatchManager.TryGetCurrentNovel(out _))
+            PatchManager.ApplyTranslationFont(text);
 
         if (Config.ModifyText.Value)
             ModifyText(text, Config.MessageTextColor);
