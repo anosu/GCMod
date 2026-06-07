@@ -1,0 +1,12 @@
+namespace GCMod;
+
+/// <summary>
+/// 统一日志封装，避免各处直接引用 Plugin.Log，
+/// 便于后续单元测试和日志格式统一。
+/// </summary>
+public static class ModLogger
+{
+    public static void Info(string msg) => Plugin.Log.LogInfo(msg);
+    public static void Warn(string msg) => Plugin.Log.LogWarning(msg);
+    public static void Error(string msg) => Plugin.Log.LogError(msg);
+}

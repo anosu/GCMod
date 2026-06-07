@@ -1,265 +1,66 @@
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using DMM.OLG.Unity.Engine.Internal;
-using DMM.OLG.Unity.Extensions.Novel;
 using Gc;
 using Gc.Battle.SkillWidget;
-using Gc.Home;
 using HarmonyLib;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace GCMod
 {
-    public class Patch
+    /// <summary>
+    /// Harmony 补丁入口。负责初始化所有子补丁类、共享工具方法，
+    /// 以及不属于特定功能域的通用补丁（跳过大招动画、修改帧率）。
+    /// </summary>
+    public static class Patch
     {
-        public static int novelId;
-        public static Image NormalFrame;
-        public static Image CgModeFrame;
-        public static Image BaseNameFrame;
-        public static Color DefaultNameColor = new Color(0.957f, 0.957f, 0.914f);
-        public static TMP_FontAsset originalFontAsset;
+        /// <summary>当前加载的剧情 Novel ID。</summary>
+        public static int NovelId;
 
+        /// <summary>
+        /// 创建并注册所有 Harmony 补丁。
+        /// </summary>
         public static void Initialize()
         {
             Harmony.CreateAndPatchAll(typeof(Patch));
+            Harmony.CreateAndPatchAll(typeof(Patches.TranslationPatch));
+            Harmony.CreateAndPatchAll(typeof(Patches.VisualPatch));
+            Harmony.CreateAndPatchAll(typeof(Patches.HomeWordPatch));
+#if DEBUG
+            Harmony.CreateAndPatchAll(typeof(Patches.DebugPatch));
+#endif
         }
 
-        private static bool TryGetCurrentNovel(out Dictionary<string, string> translation)
+        /// <summary>
+        /// 尝试获取当前 Novel ID 对应的翻译字典。
+        /// </summary>
+        public static bool TryGetCurrentNovel(out Dictionary<string, string> translation)
         {
             translation = null;
-            return Config.Translation.Value && Translation.novels.TryGetValue(novelId, out translation);
+            return Config.Translation.Value && TranslationService.Novels.TryGetValue(NovelId, out translation);
         }
 
-        private static bool HasTranslationFont()
+        /// <summary>
+        /// 判断翻译字体是否已加载且有效（场景切换后自动重新校验）。
+        /// </summary>
+        public static bool HasTranslationFont()
         {
-            return Config.Translation.Value && Translation.fontAsset != null;
+            return Config.Translation.Value && Services.FontLoader.IsFontValid();
         }
 
-        private static void ApplyTranslationFont(TextMeshProUGUI text)
+        /// <summary>
+        /// 对 TMP 文本组件应用翻译字体。
+        /// </summary>
+        public static void ApplyTranslationFont(TextMeshProUGUI text)
         {
             if (text != null && HasTranslationFont())
-                text.font = Translation.fontAsset;
+                text.font = Services.FontLoader.FontAsset;
         }
 
-        private static void ApplyImageAlpha(Image image, float alpha)
-        {
-            if (image == null)
-                return;
+        // ---- 通用补丁（不属于翻译/视觉/主页/调试） ----
 
-            Color color = image.color;
-            color.a = alpha;
-            image.color = color;
-        }
-
-        public static void ModifyText(TextMeshProUGUI text, Color color)
-        {
-            text.color = color;
-            text.fontMaterial.EnableKeyword("OUTLINE_ON");
-            text.fontMaterial.SetFloat("_FaceDilate", Config.FaceDilate.Value);
-            text.fontMaterial.SetColor("_OutlineColor", Config.OutlineColor);
-            text.fontMaterial.SetFloat("_OutlineWidth", Config.OutlineWidth.Value);
-            text.fontMaterial.SetFloat("_OutlineSoftness", Config.OutlineSoftness.Value);
-        }
-
-        public static void CancelModifyText(TextMeshProUGUI text, Color color)
-        {
-            text.color = color;
-            text.fontMaterial.SetFloat("_FaceDilate", 0f);
-            text.fontMaterial.SetColor("_OutlineColor", Color.black);
-            text.fontMaterial.SetFloat("_OutlineWidth", 0f);
-            text.fontMaterial.SetFloat("_OutlineSoftness", 0f);
-            text.fontMaterial.DisableKeyword("OUTLINE_ON");
-        }
-
-#if DEBUG
-        // Offline
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(ConfigData), nameof(ConfigData.Set))]
-        public static void SetApiDomain(string key, ref string value)
-        {
-            if (!Config.OfflineStartup && !Config.Offline.Value)
-                return;
-
-            if ("ApiDomain".Equals(key))
-            {
-                value = Config.OfflineCDN.Value;
-                Plugin.Log.LogInfo($"ApiDomain: {value}");
-            }
-        }
-#endif
-
-        // Setup
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(ScriptObjectManager), nameof(ScriptObjectManager.Setup))]
-        public static void SetupTranslation(string prefix, string id)
-        {
-            if (!Config.Translation.Value)
-                return;
-
-            Plugin.Log.LogInfo($"Prefix: {prefix}, Id: {id}");
-            novelId = int.Parse(id);
-            if (!Translation.novels.ContainsKey(novelId))
-            {
-                Task task = Translation.GetNovelTranslationAsync(novelId);
-                if (!Config.AsyncMode.Value)
-                    task.Wait();
-            }
-            if (Translation.fontAsset == null)
-                Translation.EnsureFontAssetLoading();
-        }
-
-        // Title
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(EventTitle), nameof(EventTitle.ShowBlurEffect))]
-        public static void SetMessageTitle(EventTitle __instance)
-        {
-            if (!Config.Translation.Value)
-                return;
-
-            if (TryGetCurrentNovel(out var translation))
-            {
-                if (translation.TryGetValue(__instance._TitleMain.text, out string title))
-                    __instance._TitleMain.text = title;
-            }
-        }
-
-        // Title font
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(EventTitle), nameof(EventTitle.ShowBlurEffect))]
-        public static void SetMessageTitleFont(EventTitle __instance)
-        {
-            if (!Config.Translation.Value)
-                return;
-
-            if (TryGetCurrentNovel(out _))
-                ApplyTranslationFont(__instance._TitleMain);
-        }
-
-        // Name
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(EventMessage), nameof(EventMessage.SetName))]
-        public static void SetMessageName(ref string text)
-        {
-            if (!Config.Translation.Value)
-                return;
-
-            if (TryGetCurrentNovel(out _))
-            {
-                if (Translation.names.TryGetValue(text, out string name))
-                    text = name;
-            }
-        }
-
-        // Name font
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(EventMessage), nameof(EventMessage.SetName))]
-        public static void SetMessageNameFont(EventMessage __instance)
-        {
-            if (TryGetCurrentNovel(out _))
-                ApplyTranslationFont(__instance.MessageName);
-
-            if (Config.ModifyText.Value)
-                ModifyText(__instance.MessageName, Config.NameTextColor);
-            else
-                CancelModifyText(__instance.MessageName, DefaultNameColor);
-        }
-
-        // Text
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(EventText), nameof(EventText.Parse))]
-        public static void SetMessageText(EventText __instance, ref string message)
-        {
-            if (TryGetCurrentNovel(out var translation))
-            {
-                if (translation.TryGetValue(message, out string text))
-                    message = text;
-            }
-            if (Config.ModifyText.Value)
-                __instance.fontSpacing = Config.CharacterSpacing.Value;
-        }
-
-        // Text font
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(EventText), nameof(EventText.SetRuby))]
-        public static void SetMessageTextFont(GameObject go, EventText.Letter letter, ref TextMeshProUGUI text)
-        {
-            if (TryGetCurrentNovel(out _))
-                ApplyTranslationFont(text);
-
-            if (Config.ModifyText.Value)
-                ModifyText(text, Config.MessageTextColor);
-        }
-
-        // Alpha
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(EventMessage), nameof(EventMessage.Init))]
-        public static void SaveTextBackgound(EventMessage __instance)
-        {
-            foreach (Image image in __instance.GetComponentsInChildren<Image>())
-            {
-                if (image.name == "Normal")
-                {
-                    ApplyImageAlpha(image, Config.NormalAlpha.Value);
-                    NormalFrame = image;
-                }
-                if (image.name == "MessageWindow")
-                {
-                    ApplyImageAlpha(image, Config.CgModeAlpha.Value);
-                    CgModeFrame = image;
-                }
-            }
-            foreach (Image image in __instance.NameImage.GetComponentsInChildren<Image>())
-            {
-                if (image.name == "BaseName")
-                {
-                    ApplyImageAlpha(image, Config.NormalAlpha.Value);
-                    BaseNameFrame = image;
-                }
-            }
-        }
-
-        // Words
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(UnitWordMasterBase), nameof(UnitWordMasterBase.Word), MethodType.Getter)]
-        public static void SetHomeWord(ref string __result)
-        {
-            if (!Config.Translation.Value)
-                return;
-
-            if (Translation.words.TryGetValue(__result, out string text))
-                __result = text;
-        }
-
-        // Words font
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(HomeSpineObject), nameof(HomeSpineObject.PlayWord))]
-        public static void SetHomeWordFont(HomeSpineObject __instance)
-        {
-            if (Config.Translation.Value)
-            {
-                if (Translation.fontAsset == null)
-                    Translation.EnsureFontAssetLoading();
-
-                if (originalFontAsset == null)
-                    originalFontAsset = __instance._wordText.font;
-
-                __instance._wordText.font = Translation.fontAsset;
-                __instance._wordText.lineSpacing = 24f;
-                __instance._wordText.paragraphSpacing = 8f;
-            }
-            else
-            {
-                if (originalFontAsset != null)
-                    __instance._wordText.font = originalFontAsset;
-
-                __instance._wordText.lineSpacing = 0f;
-                __instance._wordText.paragraphSpacing = -16f;
-            }
-        }
-
-        // Skip cutin
+        /// <summary>
+        /// 跳过大招动画。
+        /// </summary>
         [HarmonyPostfix]
         [HarmonyPatch(typeof(CutInMoviePlayer), nameof(CutInMoviePlayer.PlayAsync))]
         public static void SkipCutin(CutInMoviePlayer __instance)
@@ -268,7 +69,9 @@ namespace GCMod
                 __instance.Skip();
         }
 
-        // Change FPS
+        /// <summary>
+        /// 修改游戏帧率。
+        /// </summary>
         [HarmonyPostfix]
         [HarmonyPatch(typeof(GcOptionData), nameof(GcOptionData.SetPowerSaving))]
         public static void ChangeFrameRate()

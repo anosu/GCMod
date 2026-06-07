@@ -24,7 +24,7 @@ public class Plugin : BasePlugin
 #if DEBUG
         var args = Environment.GetCommandLineArgs();
         if (args.Contains("--offline") || args.Contains("-o"))
-            GCMod.Config.OfflineStartup = true;
+            Config.OfflineStartup = true;
 #endif
 
         Log = base.Log;
@@ -36,7 +36,7 @@ public class Plugin : BasePlugin
         GCMod.Config.Initialize();
         Patch.Initialize();
         Instance = AddComponent<InputHandler>();
-        Translation.Initialize();
+        TranslationService.Initialize();
 
         Toast.Success(MyPluginInfo.PLUGIN_NAME, $"Mod 加载成功，版本: {MyPluginInfo.PLUGIN_VERSION}");
     }

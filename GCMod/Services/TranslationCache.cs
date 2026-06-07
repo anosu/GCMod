@@ -1,4 +1,3 @@
-using BepInEx;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,31 +9,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Utility.Toast;
 
 namespace GCMod
 {
-    /// <summary>
-    /// Manifest data structure matching the remote manifest.json format.
-    /// </summary>
-    public class ManifestData
-    {
-        [JsonPropertyName("hash")]
-        public string Hash { get; set; }
-
-        [JsonPropertyName("names")]
-        public string Names { get; set; }
-
-        [JsonPropertyName("words")]
-        public string Words { get; set; }
-
-        [JsonPropertyName("novels")]
-        public Dictionary<string, string> Novels { get; set; }
-    }
-
     /// <summary>
     /// Manifest-driven translation cache with local persistence.
     ///
@@ -58,6 +38,11 @@ namespace GCMod
 
         /// <summary>Prevents concurrent loads of the same resource.</summary>
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
+
+        /// <summary>Locks collection size is bounded — cleanup unreferenced entries periodically.</summary>
+        private int _lockCleanupCounter;
+
+        private const int LockCleanupInterval = 32;
 
         private static readonly JsonSerializerOptions HashJsonOptions = new()
         {
@@ -99,22 +84,20 @@ namespace GCMod
                     _manifest = JsonSerializer.Deserialize<ManifestData>(json);
                     if (_manifest == null)
                     {
-                        Plugin.Log.LogWarning("Remote manifest parse returned null");
+                        ModLogger.Warn("Remote manifest parse returned null");
                     }
                     else
                     {
-                        // Persist manifest to local cache
                         await File.WriteAllTextAsync(path, json, Utf8);
-
-                        Plugin.Log.LogInfo($"Manifest loaded ({_language}). Hash: {_manifest.Hash}");
+                        ModLogger.Info($"Manifest loaded ({_language}). Hash: {_manifest.Hash}");
                         return;
                     }
                 }
-                Plugin.Log.LogWarning($"Manifest fetch returned {response.StatusCode}");
+                ModLogger.Warn($"Manifest fetch returned {response.StatusCode}");
             }
             catch (Exception e)
             {
-                Plugin.Log.LogError($"Failed to fetch manifest: {e.Message}");
+                ModLogger.Error($"Failed to fetch manifest: {e.Message}");
             }
 
             // Fallback: try loading locally cached manifest
@@ -134,22 +117,22 @@ namespace GCMod
                     _manifest = JsonSerializer.Deserialize<ManifestData>(json);
                     if (_manifest != null)
                     {
-                        Plugin.Log.LogInfo($"Loaded cached manifest from local ({_language}). Hash: {_manifest.Hash}");
+                        ModLogger.Info($"Loaded cached manifest from local ({_language}). Hash: {_manifest.Hash}");
                         Toast.Warn("翻译服务", "无法连接远程，使用本地翻译清单");
                     }
                     else
                     {
-                        Plugin.Log.LogWarning("Cached manifest parse returned null");
+                        ModLogger.Warn("Cached manifest parse returned null");
                     }
                 }
                 catch (Exception e)
                 {
-                    Plugin.Log.LogError($"Failed to load local manifest: {e.Message}");
+                    ModLogger.Error($"Failed to load local manifest: {e.Message}");
                 }
             }
             else
             {
-                Plugin.Log.LogWarning("No local manifest cache available, will fetch without hash verification.");
+                ModLogger.Warn("No local manifest cache available, will fetch without hash verification.");
                 Toast.Warn("翻译服务", "翻译清单不可用，将直接请求翻译");
             }
         }
@@ -180,10 +163,10 @@ namespace GCMod
                         string localHash = HashFile(cachePath);
                         if (localHash == expectedHash)
                         {
-                            Plugin.Log.LogInfo($"Cache hit: {cacheKey}");
+                            ModLogger.Info($"Cache hit: {cacheKey}");
                             return LoadFromFile(cachePath);
                         }
-                        Plugin.Log.LogInfo(
+                        ModLogger.Info(
                             $"Cache hash mismatch for {cacheKey}, " +
                             $"expected={expectedHash}, local={localHash}"
                         );
@@ -191,7 +174,7 @@ namespace GCMod
                 }
 
                 // Fetch from remote
-                Plugin.Log.LogInfo($"Fetching from remote: {remoteUrl}");
+                ModLogger.Info($"Fetching from remote: {remoteUrl}");
                 var data = await GetAsync<Dictionary<string, string>>(remoteUrl);
                 if (data != null)
                 {
@@ -200,11 +183,11 @@ namespace GCMod
                 else
                 {
                     // Remote fetch failed — fallback to local cache even if hash mismatched
-                    Plugin.Log.LogWarning($"Remote fetch failed for {cacheKey}, trying local fallback.");
+                    ModLogger.Warn($"Remote fetch failed for {cacheKey}, trying local fallback.");
                     if (File.Exists(cachePath))
                     {
                         data = LoadFromFile(cachePath);
-                        Plugin.Log.LogInfo($"Loaded stale cache for {cacheKey}");
+                        ModLogger.Info($"Loaded stale cache for {cacheKey}");
                         Toast.Warn("翻译服务", $"「{type}」无法更新，使用本地缓存");
                     }
                     else
@@ -217,6 +200,31 @@ namespace GCMod
             finally
             {
                 semaphore.Release();
+                CleanupLocksIfNeeded();
+            }
+        }
+
+        /// <summary>
+        /// Periodically remove SemaphoreSlim entries that are no longer contended.
+        /// Prevents unbounded growth of the _locks dictionary.
+        /// </summary>
+        private void CleanupLocksIfNeeded()
+        {
+            if (++_lockCleanupCounter % LockCleanupInterval != 0)
+                return;
+
+            // Only remove entries with no waiters — safe to remove idle semaphores
+            var keysToRemove = new List<string>();
+            foreach (var kvp in _locks)
+            {
+                if (kvp.Value.CurrentCount > 0) // no active waiters
+                    keysToRemove.Add(kvp.Key);
+            }
+
+            foreach (var key in keysToRemove)
+            {
+                if (_locks.TryRemove(key, out var sem) && sem.CurrentCount > 0)
+                    sem.Dispose();
             }
         }
 
@@ -276,7 +284,7 @@ namespace GCMod
             }
             catch (Exception e)
             {
-                Plugin.Log.LogError($"HTTP GET error for {url}: {e.Message}");
+                ModLogger.Error($"HTTP GET error for {url}: {e.Message}");
             }
             return null;
         }
@@ -290,7 +298,7 @@ namespace GCMod
             }
             catch (Exception e)
             {
-                Plugin.Log.LogError($"Failed to load translation cache {path}: {e.Message}");
+                ModLogger.Error($"Failed to load translation cache {path}: {e.Message}");
                 return null;
             }
         }

@@ -1,3 +1,4 @@
+using System;
 using BepInEx.Configuration;
 using UnityEngine;
 using Utility.Toast;
@@ -9,7 +10,7 @@ namespace GCMod
 #if DEBUG
         public static ConfigEntry<bool> Offline;
         public static ConfigEntry<string> OfflineCDN;
-        public static bool OfflineStartup = false;
+        public static bool OfflineStartup;
 #endif
         public static ConfigEntry<int> FrameRate;
         public static ConfigEntry<bool> IsSkipCutin;
@@ -32,9 +33,16 @@ namespace GCMod
 
         public static Color NameTextColor = Color.white;
         public static Color MessageTextColor = Color.white;
-        public static Color OutlineColor = new Color(0.235f, 0.235f, 0.235f);
+        public static Color OutlineColor = new(0.235f, 0.235f, 0.235f);
 
         public static void Initialize()
+        {
+            BindAllEntries();
+            BindColorEntries();
+            BindSettingChangedLog();
+        }
+
+        private static void BindAllEntries()
         {
 #if DEBUG
             Offline = Plugin.ConfigFile.Bind("Debug.Offline", "Enabled", false, "API localization for debug");
@@ -58,15 +66,29 @@ namespace GCMod
             OutlineWidth = Plugin.ConfigFile.Bind("Message.Text", "OutlineWidth", 0.3f, "文本描边宽度，取值范围：[0, 1]");
             OutlineSoftness = Plugin.ConfigFile.Bind("Message.Text", "OutlineSoftness", 0.01f, "文本描边羽化程度，取值范围：[0, 1]");
             CharacterSpacing = Plugin.ConfigFile.Bind("Message.Text", "CharacterSpacing", 0f, "字间距，仅对消息文本设置，不应用于人物名");
+        }
 
-            ParseNameColor();
-            ParseMessageColor();
-            ParseOutlineColor();
+        /// <summary>
+        /// 统一绑定三个颜色配置项，消除重复的 Parse*Color 方法。
+        /// </summary>
+        private static void BindColorEntries()
+        {
+            var bindings = new (ConfigEntry<string> Entry, Action<Color> Setter)[]
+            {
+                (NameTextColorHex, c => NameTextColor = c),
+                (MessageTextColorHex, c => MessageTextColor = c),
+                (OutlineColorHex, c => OutlineColor = c),
+            };
 
-            NameTextColorHex.SettingChanged += (_, _) => ParseNameColor();
-            MessageTextColorHex.SettingChanged += (_, _) => ParseMessageColor();
-            OutlineColorHex.SettingChanged += (_, _) => ParseOutlineColor();
+            foreach (var (entry, setter) in bindings)
+            {
+                ParseAndSetColor(entry, setter);
+                entry.SettingChanged += (_, _) => ParseAndSetColor(entry, setter);
+            }
+        }
 
+        private static void BindSettingChangedLog()
+        {
             Plugin.ConfigFile.SettingChanged += (_, e) =>
             {
                 var c = e.ChangedSetting;
@@ -75,28 +97,18 @@ namespace GCMod
             };
         }
 
+        private static void ParseAndSetColor(ConfigEntry<string> entry, Action<Color> setter)
+        {
+            var hex = NormalizeHexColor(entry.Value);
+            if (ColorUtility.TryParseHtmlString(hex, out var color))
+                setter(color);
+        }
+
         private static string NormalizeHexColor(string hex)
         {
+            if (string.IsNullOrEmpty(hex)) return "#FFFFFF";
             hex = hex.Trim().TrimStart('#');
             return "#" + hex;
-        }
-
-        private static void ParseNameColor()
-        {
-            if (ColorUtility.TryParseHtmlString(NormalizeHexColor(NameTextColorHex.Value), out Color c))
-                NameTextColor = c;
-        }
-
-        private static void ParseMessageColor()
-        {
-            if (ColorUtility.TryParseHtmlString(NormalizeHexColor(MessageTextColorHex.Value), out Color c))
-                MessageTextColor = c;
-        }
-
-        private static void ParseOutlineColor()
-        {
-            if (ColorUtility.TryParseHtmlString(NormalizeHexColor(OutlineColorHex.Value), out Color c))
-                OutlineColor = c;
         }
     }
 }
