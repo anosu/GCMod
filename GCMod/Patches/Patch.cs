@@ -1,5 +1,5 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using BepInEx.Unity.IL2CPP.Utils;
 using DMM.OLG.Unity.Engine.Internal;
 using DMM.OLG.Unity.Extensions.Novel;
 using Gc;
@@ -24,6 +24,33 @@ namespace GCMod
         public static void Initialize()
         {
             Harmony.CreateAndPatchAll(typeof(Patch));
+        }
+
+        private static bool TryGetCurrentNovel(out Dictionary<string, string> translation)
+        {
+            translation = null;
+            return Config.Translation.Value && Translation.novels.TryGetValue(novelId, out translation);
+        }
+
+        private static bool HasTranslationFont()
+        {
+            return Config.Translation.Value && Translation.fontAsset != null;
+        }
+
+        private static void ApplyTranslationFont(TextMeshProUGUI text)
+        {
+            if (text != null && HasTranslationFont())
+                text.font = Translation.fontAsset;
+        }
+
+        private static void ApplyImageAlpha(Image image, float alpha)
+        {
+            if (image == null)
+                return;
+
+            Color color = image.color;
+            color.a = alpha;
+            image.color = color;
         }
 
         public static void ModifyText(TextMeshProUGUI text, Color color)
@@ -80,7 +107,7 @@ namespace GCMod
                     task.Wait();
             }
             if (Translation.fontAsset == null)
-                Plugin.Instance.StartCoroutine(Translation.LoadFontAsset());
+                Translation.EnsureFontAssetLoading();
         }
 
         // Title
@@ -91,9 +118,9 @@ namespace GCMod
             if (!Config.Translation.Value)
                 return;
 
-            if (Translation.novels.ContainsKey(novelId))
+            if (TryGetCurrentNovel(out var translation))
             {
-                if (Translation.novels[novelId].TryGetValue(__instance._TitleMain.text, out string title))
+                if (translation.TryGetValue(__instance._TitleMain.text, out string title))
                     __instance._TitleMain.text = title;
             }
         }
@@ -106,8 +133,8 @@ namespace GCMod
             if (!Config.Translation.Value)
                 return;
 
-            if (Translation.novels.ContainsKey(novelId))
-                __instance._TitleMain.font = Translation.fontAsset;
+            if (TryGetCurrentNovel(out _))
+                ApplyTranslationFont(__instance._TitleMain);
         }
 
         // Name
@@ -118,7 +145,7 @@ namespace GCMod
             if (!Config.Translation.Value)
                 return;
 
-            if (Translation.novels.ContainsKey(novelId))
+            if (TryGetCurrentNovel(out _))
             {
                 if (Translation.names.TryGetValue(text, out string name))
                     text = name;
@@ -130,8 +157,8 @@ namespace GCMod
         [HarmonyPatch(typeof(EventMessage), nameof(EventMessage.SetName))]
         public static void SetMessageNameFont(EventMessage __instance)
         {
-            if (Config.Translation.Value && Translation.novels.ContainsKey(novelId))
-                __instance.MessageName.font = Translation.fontAsset;
+            if (TryGetCurrentNovel(out _))
+                ApplyTranslationFont(__instance.MessageName);
 
             if (Config.ModifyText.Value)
                 ModifyText(__instance.MessageName, Config.NameTextColor);
@@ -144,9 +171,9 @@ namespace GCMod
         [HarmonyPatch(typeof(EventText), nameof(EventText.Parse))]
         public static void SetMessageText(EventText __instance, ref string message)
         {
-            if (Config.Translation.Value && Translation.novels.ContainsKey(novelId))
+            if (TryGetCurrentNovel(out var translation))
             {
-                if (Translation.novels[novelId].TryGetValue(message, out string text))
+                if (translation.TryGetValue(message, out string text))
                     message = text;
             }
             if (Config.ModifyText.Value)
@@ -158,8 +185,8 @@ namespace GCMod
         [HarmonyPatch(typeof(EventText), nameof(EventText.SetRuby))]
         public static void SetMessageTextFont(GameObject go, EventText.Letter letter, ref TextMeshProUGUI text)
         {
-            if (Config.Translation.Value && Translation.novels.ContainsKey(novelId))
-                text.font = Translation.fontAsset;
+            if (TryGetCurrentNovel(out _))
+                ApplyTranslationFont(text);
 
             if (Config.ModifyText.Value)
                 ModifyText(text, Config.MessageTextColor);
@@ -174,16 +201,12 @@ namespace GCMod
             {
                 if (image.name == "Normal")
                 {
-                    Color color = image.color;
-                    color.a = Config.NormalAlpha.Value;
-                    image.color = color;
+                    ApplyImageAlpha(image, Config.NormalAlpha.Value);
                     NormalFrame = image;
                 }
                 if (image.name == "MessageWindow")
                 {
-                    Color _color = image.color;
-                    _color.a = Config.CgModeAlpha.Value;
-                    image.color = _color;
+                    ApplyImageAlpha(image, Config.CgModeAlpha.Value);
                     CgModeFrame = image;
                 }
             }
@@ -191,9 +214,7 @@ namespace GCMod
             {
                 if (image.name == "BaseName")
                 {
-                    Color color = image.color;
-                    color.a = Config.NormalAlpha.Value;
-                    image.color = color;
+                    ApplyImageAlpha(image, Config.NormalAlpha.Value);
                     BaseNameFrame = image;
                 }
             }
@@ -219,7 +240,7 @@ namespace GCMod
             if (Config.Translation.Value)
             {
                 if (Translation.fontAsset == null)
-                    Plugin.Instance.StartCoroutine(Translation.LoadFontAsset());
+                    Translation.EnsureFontAssetLoading();
 
                 if (originalFontAsset == null)
                     originalFontAsset = __instance._wordText.font;
