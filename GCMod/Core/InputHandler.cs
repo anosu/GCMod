@@ -1,5 +1,6 @@
 using BepInEx.Configuration;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace GCMod
 {
@@ -15,29 +16,15 @@ namespace GCMod
             // F6: NormalAlpha 调节
             if (Input.GetKeyDown(KeyCode.F6))
             {
-                float delta = (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)) ? 0.1f : -0.1f;
-                Config.NormalAlpha.Value = Mathf.Clamp(Mathf.Round((Config.NormalAlpha.Value + delta) * 10f) / 10f, 0f, 1f);
-                if (Patch.NormalFrame != null && Patch.BaseNameFrame != null)
-                {
-                    Color color1 = Patch.NormalFrame.color;
-                    Color color2 = Patch.BaseNameFrame.color;
-                    color1.a = color2.a = Config.NormalAlpha.Value;
-                    Patch.NormalFrame.color = color1;
-                    Patch.BaseNameFrame.color = color2;
-                }
+                Config.NormalAlpha.Value = ClampAlpha(Config.NormalAlpha.Value + GetAlphaDelta());
+                ApplyAlpha(Config.NormalAlpha.Value, Patch.NormalFrame, Patch.BaseNameFrame);
             }
 
             // F7: CgModeAlpha 调节
             if (Input.GetKeyDown(KeyCode.F7))
             {
-                float delta = (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)) ? 0.1f : -0.1f;
-                Config.CgModeAlpha.Value = Mathf.Clamp(Mathf.Round((Config.CgModeAlpha.Value + delta) * 10f) / 10f, 0f, 1f);
-                if (Patch.CgModeFrame != null)
-                {
-                    Color color = Patch.CgModeFrame.color;
-                    color.a = Config.CgModeAlpha.Value;
-                    Patch.CgModeFrame.color = color;
-                }
+                Config.CgModeAlpha.Value = ClampAlpha(Config.CgModeAlpha.Value + GetAlphaDelta());
+                ApplyAlpha(Config.CgModeAlpha.Value, Patch.CgModeFrame);
             }
 
             // F10: 重载配置
@@ -54,6 +41,34 @@ namespace GCMod
             {
                 var entry = getter();
                 entry.Value = !entry.Value;
+            }
+        }
+
+        private static bool IsAltPressed()
+        {
+            return Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+        }
+
+        private static float GetAlphaDelta()
+        {
+            return IsAltPressed() ? 0.1f : -0.1f;
+        }
+
+        private static float ClampAlpha(float value)
+        {
+            return Mathf.Clamp(Mathf.Round(value * 10f) / 10f, 0f, 1f);
+        }
+
+        private static void ApplyAlpha(float alpha, params Image[] images)
+        {
+            foreach (var image in images)
+            {
+                if (image == null)
+                    continue;
+
+                Color color = image.color;
+                color.a = alpha;
+                image.color = color;
             }
         }
     }
