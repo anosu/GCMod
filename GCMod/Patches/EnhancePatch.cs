@@ -8,7 +8,7 @@ namespace GCMod.Patches;
 /// 游戏通用增强补丁：帧率修改 + 跳过大招动画。
 /// </summary>
 [HarmonyPatch]
-public static class EnhancementPatch
+public static class EnhancePatch
 {
     /// <summary>修改游戏帧率。</summary>
     [HarmonyPostfix]

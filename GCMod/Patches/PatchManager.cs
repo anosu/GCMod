@@ -17,10 +17,10 @@ public static class PatchManager
     /// </summary>
     public static void Initialize()
     {
-        Harmony.CreateAndPatchAll(typeof(EnhancementPatch));
+        Harmony.CreateAndPatchAll(typeof(EnhancePatch));
         Harmony.CreateAndPatchAll(typeof(TranslationPatch));
         Harmony.CreateAndPatchAll(typeof(VisualPatch));
-        Harmony.CreateAndPatchAll(typeof(HomeWordPatch));
+        Harmony.CreateAndPatchAll(typeof(HomePatch));
 #if DEBUG
         Harmony.CreateAndPatchAll(typeof(DebugPatch));
 #endif
@@ -33,23 +33,15 @@ public static class PatchManager
     {
         translation = null;
         return Config.Translation.Value
-            && Mod.Translation.Novels.TryGetValue(NovelId, out translation);
+            && Plugin.Trans.Novels.TryGetValue(NovelId, out translation);
     }
 
     /// <summary>
-    /// 判断翻译字体是否已加载且有效。
-    /// </summary>
-    public static bool HasTranslationFont()
-    {
-        return Config.Translation.Value && Mod.Font.IsFontValid();
-    }
-
-    /// <summary>
-    /// 对 TMP 文本组件应用翻译字体。
+    /// 对 TMP 文本组件应用翻译字体（带空安全检查）。
     /// </summary>
     public static void ApplyTranslationFont(TextMeshProUGUI text)
     {
-        if (text != null && HasTranslationFont())
-            text.font = Mod.Font.FontAsset;
+        if (text != null && Plugin.Trans.Font.IsLoaded)
+            text.font = Plugin.Trans.Font.Asset;
     }
 }

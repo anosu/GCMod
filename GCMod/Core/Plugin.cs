@@ -5,24 +5,36 @@ using BepInEx.Unity.IL2CPP;
 using GCMod.Patches;
 using GCMod.Services;
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using TMPro;
 using UnityEngine;
-using Utility.Toast;
+using Utility.Assets;
+using Utility.Notifications;
 
 namespace GCMod;
 
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class Plugin : BasePlugin
 {
+    private const int HttpTimeoutSeconds = 30;
+    private const int PooledConnectionLifetimeMinutes = 5;
+    private const int PooledConnectionIdleTimeoutMinutes = 2;
+
     public static ConfigFile ConfigFile;
     public static new ManualLogSource Log;
     public static MonoBehaviour Instance;
+    public static TranslationManager Trans;
 
     public override void Load()
     {
-        try { Console.OutputEncoding = Encoding.UTF8; } catch { }
+        try
+        {
+            Console.OutputEncoding = Encoding.UTF8;
+        }
+        catch { }
 
 #if DEBUG
         var args = Environment.GetCommandLineArgs();
@@ -34,40 +46,47 @@ public class Plugin : BasePlugin
         ConfigFile = base.Config;
         Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
 
-        AddComponent<ToastUI>();
+        Toast.Initialize();
         GCMod.Config.Initialize();
+        Instance = AddComponent<Hotkey>();
+
         Initialize();
         PatchManager.Initialize();
+        Trans.Initialize();
 
-        Instance = AddComponent<InputHandler>();
-        Mod.Translation.Initialize();
-
-        Toast.Success(MyPluginInfo.PLUGIN_NAME, $"Mod 加载成功，版本: {MyPluginInfo.PLUGIN_VERSION}");
+        Toast.Success(
+            MyPluginInfo.PLUGIN_NAME,
+            $"Mod 加载成功，版本: {MyPluginInfo.PLUGIN_VERSION}"
+        );
     }
 
     private static void Initialize()
     {
-        var httpClient = new HttpClient(new SocketsHttpHandler
+        var httpClient = new HttpClient(
+            new SocketsHttpHandler
+            {
+                PooledConnectionLifetime = TimeSpan.FromMinutes(PooledConnectionLifetimeMinutes),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(
+                    PooledConnectionIdleTimeoutMinutes
+                ),
+            }
+        )
         {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-        })
-        {
-            Timeout = TimeSpan.FromSeconds(30),
+            Timeout = TimeSpan.FromSeconds(HttpTimeoutSeconds),
         };
 
         var cache = new TranslationCache(
             GCMod.Config.TranslationCDN.Value,
-            System.IO.Path.Combine(Paths.PluginPath, "GCMod", "cache"),
+            Path.Combine(Paths.PluginPath, MyPluginInfo.PLUGIN_GUID, "cache"),
             GCMod.Config.TranslationLanguage.Value,
-            httpClient);
+            httpClient
+        );
 
-        var font = new FontLoader();
-        var translation = new TranslationManager(cache, font, httpClient);
+        string path = GCMod.Config.FontBundlePath.Value;
+        string resolvedPath = Path.IsPathRooted(path) ? path : Path.Combine(Paths.PluginPath, path);
 
-        Mod.Translation = translation;
-        Mod.Font = font;
-        Mod.Cache = cache;
+        var font = new AssetBundleLoader<TMP_FontAsset>(resolvedPath);
+        Trans = new TranslationManager(cache, font);
     }
 
     public override bool Unload()

@@ -11,23 +11,26 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using GCMod.Interfaces;
-using Utility.Toast;
+using Utility.Notifications;
 
-namespace GCMod
+namespace GCMod.Services
 {
     /// <summary>
-    /// Manifest-driven translation cache with local persistence.
+    /// 基于清单（Manifest）的翻译缓存管理器，支持本地持久化。
     ///
-    /// Usage:
+    /// <para>使用示例：</para>
+    /// <code>
     ///   await cache.LoadAsync("names");
     ///   await cache.LoadAsync("novels", "10005");
+    /// </code>
     ///
-    /// Load flow:
-    ///   1. Check if resource hash exists in manifest
-    ///   2. If local cache file exists, compute its canonical hash
-    ///   3. If hash matches manifest → use local cache
-    ///   4. Otherwise → fetch from remote and save to local cache
+    /// <para>加载流程：</para>
+    /// <list type="number">
+    ///   <item>检查清单中是否存在资源哈希</item>
+    ///   <item>如果本地缓存文件存在，计算其规范化哈希值</item>
+    ///   <item>哈希匹配 → 使用本地缓存</item>
+    ///   <item>哈希不匹配或不存在 → 从远程获取并保存到本地缓存</item>
+    /// </list>
     /// </summary>
     public class TranslationCache
     {
@@ -35,25 +38,33 @@ namespace GCMod
         private readonly string _cacheDir;
         private readonly string _language;
         private readonly HttpClient _client;
-        private ManifestData _manifest;
+        private Manifest _manifest;
 
-        /// <summary>Prevents concurrent loads of the same resource.</summary>
+        /// <summary>防止同一资源并发加载的锁集合。</summary>
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
-        /// <summary>Locks collection size is bounded — cleanup unreferenced entries periodically.</summary>
+        /// <summary>锁清理计数器，用于定期清理无引用的锁。</summary>
         private int _lockCleanupCounter;
 
         private const int LockCleanupInterval = 32;
 
-        private static readonly JsonSerializerOptions HashJsonOptions = new()
+        /// <summary>JSON 序列化选项（用于保存缓存文件）。</summary>
+        private static readonly JsonSerializerOptions JsonOptions = new()
         {
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = false,
         };
 
-        /// <summary>UTF-8 without BOM, used for all file I/O.</summary>
+        /// <summary>UTF-8 编码（无 BOM），用于所有文件 I/O。</summary>
         private static readonly Encoding Utf8 = new UTF8Encoding(false);
 
+        /// <summary>
+        /// 初始化翻译缓存管理器。
+        /// </summary>
+        /// <param name="cdn">CDN 根地址。</param>
+        /// <param name="cacheDir">本地缓存根目录。</param>
+        /// <param name="language">目标语言代码。</param>
+        /// <param name="client">HTTP 客户端实例。</param>
         public TranslationCache(string cdn, string cacheDir, string language, HttpClient client)
         {
             _cdn = cdn.TrimEnd('/');
@@ -66,116 +77,122 @@ namespace GCMod
             Directory.CreateDirectory(Path.Combine(langDir, "novels"));
         }
 
-        public ManifestData Manifest => _manifest;
+        /// <summary>获取当前已加载的翻译清单。</summary>
+        public Manifest Manifest => _manifest;
 
         /// <summary>
-        /// Fetch the remote manifest and cache it locally.
-        /// Falls back to local cached manifest on failure.
+        /// 获取并缓存远程翻译清单。
+        /// 失败时回退到本地已缓存的清单。
         /// </summary>
         public async Task FetchManifestAsync()
         {
-            var url = BuildRemoteUrl("manifest");
-            var path = BuildCachePath("manifest");
+            var url = TranslationPaths.BuildRemoteUrl(_cdn, TranslationPaths.Manifest, _language);
+            var path = TranslationPaths.BuildCachePath(
+                _cacheDir,
+                TranslationPaths.Manifest,
+                _language
+            );
+
             try
             {
                 var response = await _client.GetAsync(url);
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    _manifest = JsonSerializer.Deserialize<ManifestData>(json);
+                    _manifest = JsonSerializer.Deserialize<Manifest>(json);
                     if (_manifest == null)
                     {
-                        ModLogger.Warn("Remote manifest parse returned null");
+                        Logger.Warn("Remote manifest parse returned null");
                     }
                     else
                     {
                         await File.WriteAllTextAsync(path, json, Utf8);
-                        ModLogger.Info($"Manifest loaded ({_language}). Hash: {_manifest.Hash}");
+                        Logger.Info($"Manifest loaded ({_language}). Hash: {_manifest.Hash}");
                         return;
                     }
                 }
-                ModLogger.Warn($"Manifest fetch returned {response.StatusCode}");
+                Logger.Warn($"Manifest fetch returned {response.StatusCode}");
             }
             catch (Exception e)
             {
-                ModLogger.Error($"Failed to fetch manifest: {e.Message}");
+                Logger.Error($"Failed to fetch manifest: {e.Message}");
             }
 
-            // Fallback: try loading locally cached manifest
+            // 回退：尝试加载本地缓存的清单
             TryLoadLocalManifest(path);
         }
 
         /// <summary>
-        /// Try to load a previously cached manifest from disk.
+        /// 尝试从磁盘加载之前缓存的清单文件。
         /// </summary>
         private void TryLoadLocalManifest(string path)
         {
-            if (File.Exists(path))
+            if (!File.Exists(path))
             {
-                try
+                Logger.Warn(
+                    "No local manifest cache available, will fetch without hash verification."
+                );
+                Toast.Warning("翻译服务", "翻译清单不可用，将直接请求翻译");
+                return;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(path, Utf8);
+                _manifest = JsonSerializer.Deserialize<Manifest>(json);
+                if (_manifest != null)
                 {
-                    var json = File.ReadAllText(path, Utf8);
-                    _manifest = JsonSerializer.Deserialize<ManifestData>(json);
-                    if (_manifest != null)
-                    {
-                        ModLogger.Info($"Loaded cached manifest from local ({_language}). Hash: {_manifest.Hash}");
-                        Toast.Warn("翻译服务", "无法连接远程，使用本地翻译清单");
-                    }
-                    else
-                    {
-                        ModLogger.Warn("Cached manifest parse returned null");
-                    }
+                    Logger.Info(
+                        $"Loaded cached manifest from local ({_language}). Hash: {_manifest.Hash}"
+                    );
+                    Toast.Warning("翻译服务", "无法连接远程，使用本地翻译清单");
                 }
-                catch (Exception e)
+                else
                 {
-                    ModLogger.Error($"Failed to load local manifest: {e.Message}");
+                    Logger.Warn("Cached manifest parse returned null");
                 }
             }
-            else
+            catch (Exception e)
             {
-                ModLogger.Warn("No local manifest cache available, will fetch without hash verification.");
-                Toast.Warn("翻译服务", "翻译清单不可用，将直接请求翻译");
+                Logger.Error($"Failed to load local manifest: {e.Message}");
             }
         }
 
         /// <summary>
-        /// Load translation data with cache-aware logic.
+        /// 加载翻译数据，支持缓存感知逻辑。
         /// </summary>
-        /// <param name="type">Translation type: "names", "words", or "novels"</param>
-        /// <param name="id">Optional identifier (e.g., novelId for novels)</param>
-        /// <returns>The loaded dictionary, or null on failure</returns>
+        /// <param name="type">翻译类型：names、words 或 novels。</param>
+        /// <param name="id">可选标识符（如 novels 的 novelId）。</param>
+        /// <returns>加载的字典，失败时返回 null。</returns>
         public async Task<Dictionary<string, string>> LoadAsync(string type, string id = null)
         {
             string cacheKey = id != null ? $"{_language}/{type}/{id}" : $"{_language}/{type}";
-            string remoteUrl = BuildRemoteUrl(type, id);
-            string cachePath = BuildCachePath(type, id);
+            string remoteUrl = TranslationPaths.BuildRemoteUrl(_cdn, type, _language, id);
+            string cachePath = TranslationPaths.BuildCachePath(_cacheDir, type, _language, id);
             string expectedHash = GetManifestHash(type, id);
 
-            // Serialize concurrent loads of the same resource
+            // 序列化同一资源的并发加载
             var semaphore = _locks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
             await semaphore.WaitAsync();
             try
             {
-                // If manifest has an expected hash for this resource, check local cache first
-                if (expectedHash != null)
+                // 如果清单中有预期哈希值，先检查本地缓存
+                if (expectedHash != null && File.Exists(cachePath))
                 {
-                    if (File.Exists(cachePath))
+                    string localHash = HashFile(cachePath);
+                    if (localHash == expectedHash)
                     {
-                        string localHash = HashFile(cachePath);
-                        if (localHash == expectedHash)
-                        {
-                            ModLogger.Info($"Cache hit: {cacheKey}");
-                            return LoadFromFile(cachePath);
-                        }
-                        ModLogger.Info(
-                            $"Cache hash mismatch for {cacheKey}, " +
-                            $"expected={expectedHash}, local={localHash}"
-                        );
+                        Logger.Info($"Cache hit: {cacheKey}");
+                        return LoadFromFile(cachePath);
                     }
+                    Logger.Info(
+                        $"Cache hash mismatch for {cacheKey}, "
+                            + $"expected={expectedHash}, local={localHash}"
+                    );
                 }
 
-                // Fetch from remote
-                ModLogger.Info($"Fetching from remote: {remoteUrl}");
+                // 从远程获取
+                Logger.Info($"Fetching from remote: {remoteUrl}");
                 var data = await GetAsync<Dictionary<string, string>>(remoteUrl);
                 if (data != null)
                 {
@@ -183,13 +200,13 @@ namespace GCMod
                 }
                 else
                 {
-                    // Remote fetch failed — fallback to local cache even if hash mismatched
-                    ModLogger.Warn($"Remote fetch failed for {cacheKey}, trying local fallback.");
+                    // 远程获取失败 → 回退到本地缓存（即使哈希不匹配）
+                    Logger.Warn($"Remote fetch failed for {cacheKey}, trying local fallback.");
                     if (File.Exists(cachePath))
                     {
                         data = LoadFromFile(cachePath);
-                        ModLogger.Info($"Loaded stale cache for {cacheKey}");
-                        Toast.Warn("翻译服务", $"「{type}」无法更新，使用本地缓存");
+                        Logger.Info($"Loaded stale cache for {cacheKey}");
+                        Toast.Warning("翻译服务", $"「{type}」无法更新，使用本地缓存");
                     }
                     else
                     {
@@ -206,19 +223,19 @@ namespace GCMod
         }
 
         /// <summary>
-        /// Periodically remove SemaphoreSlim entries that are no longer contended.
-        /// Prevents unbounded growth of the _locks dictionary.
+        /// 定期移除不再竞争的 SemaphoreSlim 条目。
+        /// 防止 _locks 字典无限增长。
         /// </summary>
         private void CleanupLocksIfNeeded()
         {
             if (++_lockCleanupCounter % LockCleanupInterval != 0)
                 return;
 
-            // Only remove entries with no waiters — safe to remove idle semaphores
+            // 仅移除无等待者的条目 - 安全删除空闲信号量
             var keysToRemove = new List<string>();
             foreach (var kvp in _locks)
             {
-                if (kvp.Value.CurrentCount > 0) // no active waiters
+                if (kvp.Value.CurrentCount > 0) // 无活动等待者
                     keysToRemove.Add(kvp.Key);
             }
 
@@ -230,52 +247,30 @@ namespace GCMod
         }
 
         /// <summary>
-        /// Get the expected hash from the manifest for a given type/id combination.
-        /// Returns null if the manifest doesn't contain this resource.
+        /// 从清单中获取指定类型/ID 组合的预期哈希值。
         /// </summary>
+        /// <returns>清单不包含此资源时返回 null。</returns>
         private string GetManifestHash(string type, string id)
         {
-            if (_manifest == null) return null;
+            if (_manifest == null)
+                return null;
             return type switch
             {
-                "names" => _manifest.Names,
-                "words" => _manifest.Words,
-                "novels" when id != null =>
-                    _manifest.Novels != null && _manifest.Novels.TryGetValue(id, out var hash)
-                        ? hash
-                        : null,
+                TranslationPaths.Names => _manifest.Names,
+                TranslationPaths.Words => _manifest.Words,
+                TranslationPaths.Novels when id != null => _manifest.Novels != null
+                && _manifest.Novels.TryGetValue(id, out var hash)
+                    ? hash
+                    : null,
                 _ => null,
             };
         }
 
-        private string BuildRemoteUrl(string type, string id = null)
-        {
-            return type switch
-            {
-                "manifest" => $"{_cdn}/manifest/{_language}.json",
-                "names"    => $"{_cdn}/names/{_language}.json",
-                "words"    => $"{_cdn}/words/{_language}.json",
-                "novels" when id != null => $"{_cdn}/novels/{id}/{_language}.json",
-                "novels" => throw new ArgumentException("Novel ID is required for novels type"),
-                _ => throw new ArgumentException($"Unknown translation type: {type}"),
-            };
-        }
-
-        private string BuildCachePath(string type, string id = null)
-        {
-            var langDir = Path.Combine(_cacheDir, _language);
-            return type switch
-            {
-                "manifest" => Path.Combine(langDir, "manifest.json"),
-                "names"    => Path.Combine(langDir, "names.json"),
-                "words"    => Path.Combine(langDir, "words.json"),
-                "novels" when id != null => Path.Combine(langDir, "novels", $"{id}.json"),
-                "novels" => throw new ArgumentException("Novel ID is required for novels type"),
-                _ => throw new ArgumentException($"Unknown translation type: {type}"),
-            };
-        }
-
-        private async Task<T> GetAsync<T>(string url) where T : class
+        /// <summary>
+        /// 发起 HTTP GET 请求并反序列化 JSON 响应。
+        /// </summary>
+        private async Task<T> GetAsync<T>(string url)
+            where T : class
         {
             try
             {
@@ -285,11 +280,14 @@ namespace GCMod
             }
             catch (Exception e)
             {
-                ModLogger.Error($"HTTP GET error for {url}: {e.Message}");
+                Logger.Error($"HTTP GET error for {url}: {e.Message}");
             }
             return null;
         }
 
+        /// <summary>
+        /// 从本地文件加载翻译字典。
+        /// </summary>
         private static Dictionary<string, string> LoadFromFile(string path)
         {
             try
@@ -299,30 +297,28 @@ namespace GCMod
             }
             catch (Exception e)
             {
-                ModLogger.Error($"Failed to load translation cache {path}: {e.Message}");
+                Logger.Error($"Failed to load translation cache {path}: {e.Message}");
                 return null;
             }
         }
 
+        /// <summary>
+        /// 将翻译字典保存到本地文件。
+        /// </summary>
         private static void SaveToFile(string path, Dictionary<string, string> data)
         {
             var directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory))
                 Directory.CreateDirectory(directory);
 
-            var json = JsonSerializer.Serialize(data, HashJsonOptions);
+            var json = JsonSerializer.Serialize(data, JsonOptions);
             File.WriteAllText(path, json, Utf8);
         }
 
-        #region Hash Methods
-
         /// <summary>
-        /// Compute the canonical hash of a translation JSON file.
-        /// Equivalent to Python's hash_file():
-        ///   def hash_file(path):
-        ///       return get_hash(json.loads(path.read_text(encoding="utf-8")))
+        /// 计算翻译 JSON 文件的规范化哈希值。
         /// </summary>
-        public static string HashFile(string path)
+        private static string HashFile(string path)
         {
             var json = File.ReadAllText(path, Utf8);
             var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
@@ -330,17 +326,12 @@ namespace GCMod
         }
 
         /// <summary>
-        /// Compute the canonical hash of a dictionary.
-        /// Equivalent to Python:
-        ///   def get_hash(obj: dict[str, str]) -> str:
-        ///       md5 = hashlib.md5()
-        ///       for key in sorted(obj.keys()):
-        ///           md5.update(f"{key}\x00{obj[key]}\x00".encode())
-        ///       return md5.hexdigest()
+        /// 计算字典的规范化哈希值（与 Python 脚本兼容）。
         /// </summary>
-        public static string GetHash(Dictionary<string, string> dict)
+        private static string GetHash(Dictionary<string, string> dict)
         {
-            if (dict == null) return null;
+            if (dict == null)
+                return null;
 
             var sb = new StringBuilder();
             foreach (var key in dict.Keys.OrderBy(k => k, StringComparer.Ordinal))
@@ -350,10 +341,9 @@ namespace GCMod
                 sb.Append(dict[key]);
                 sb.Append('\0');
             }
+
             var hash = MD5.HashData(Utf8.GetBytes(sb.ToString()));
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
-
-        #endregion
     }
 }

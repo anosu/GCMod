@@ -10,10 +10,10 @@ namespace GCMod;
 /// 快捷键处理。挂载为 MonoBehaviour，每帧检查按键输入。
 /// 使用节流机制避免连续帧重复触发同一快捷键。
 /// </summary>
-public class InputHandler : MonoBehaviour
+public class Hotkey : MonoBehaviour
 {
-    private readonly Dictionary<KeyCode, float> _lastPressTime = new();
     private const float DebounceInterval = 0.15f;
+    private readonly Dictionary<KeyCode, float> _lastPressTime = new();
 
     private void Update()
     {
@@ -24,22 +24,27 @@ public class InputHandler : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F6) && CanTrigger(KeyCode.F6))
         {
             Config.NormalAlpha.Value = AlphaController.ClampAlpha(
-                Config.NormalAlpha.Value + AlphaController.GetDelta(IsAltPressed()));
-            AlphaController.ApplyAlpha(Config.NormalAlpha.Value,
-                VisualPatch.NormalFrame, VisualPatch.BaseNameFrame);
+                Config.NormalAlpha.Value + AlphaController.GetDelta(IsAltPressed())
+            );
+            AlphaController.ApplyAlpha(
+                Config.NormalAlpha.Value,
+                VisualPatch.NormalFrame,
+                VisualPatch.BaseNameFrame
+            );
         }
 
         if (Input.GetKeyDown(KeyCode.F7) && CanTrigger(KeyCode.F7))
         {
             Config.CgModeAlpha.Value = AlphaController.ClampAlpha(
-                Config.CgModeAlpha.Value + AlphaController.GetDelta(IsAltPressed()));
+                Config.CgModeAlpha.Value + AlphaController.GetDelta(IsAltPressed())
+            );
             AlphaController.ApplyAlpha(Config.CgModeAlpha.Value, VisualPatch.CgModeFrame);
         }
 
         if (Input.GetKeyDown(KeyCode.F10) && CanTrigger(KeyCode.F10))
         {
             Plugin.ConfigFile.Reload();
-            ModLogger.Info("Config reloaded");
+            Logger.Info("Config reloaded");
         }
     }
 

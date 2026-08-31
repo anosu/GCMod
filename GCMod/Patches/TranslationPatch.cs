@@ -15,23 +15,21 @@ public static class TranslationPatch
     /// 剧情加载时获取对应 Novel ID，触发翻译数据预加载。
     /// </summary>
     [HarmonyPrefix]
-    [HarmonyPatch(typeof(ScriptObjectManager), nameof(ScriptObjectManager.Setup))]
+    [HarmonyPatch(typeof(ScriptObjectManager), nameof(ScriptObjectManager.Create))]
     public static void SetupTranslation(string prefix, string id)
     {
-        if (!Config.Translation.Value) return;
+        if (!Config.Translation.Value)
+            return;
 
         Plugin.Log.LogInfo($"Prefix: {prefix}, Id: {id}");
         PatchManager.NovelId = int.Parse(id);
 
-        if (!Mod.Translation.Novels.ContainsKey(PatchManager.NovelId))
+        if (!Plugin.Trans.Novels.ContainsKey(PatchManager.NovelId))
         {
-            Task task = Mod.Translation.GetNovelTranslationAsync(PatchManager.NovelId);
+            Task task = Plugin.Trans.GetNovelTranslationAsync(PatchManager.NovelId);
             if (!Config.AsyncMode.Value)
                 task.Wait();
         }
-
-        if (!Mod.Font.IsFontValid())
-            Mod.Font.EnsureLoaded();
     }
 
     /// <summary>
@@ -41,7 +39,8 @@ public static class TranslationPatch
     [HarmonyPatch(typeof(EventTitle), nameof(EventTitle.ShowBlurEffect))]
     public static void SetMessageTitle(EventTitle __instance)
     {
-        if (!Config.Translation.Value) return;
+        if (!Config.Translation.Value)
+            return;
 
         if (PatchManager.TryGetCurrentNovel(out var translation))
         {
@@ -57,11 +56,12 @@ public static class TranslationPatch
     [HarmonyPatch(typeof(EventMessage), nameof(EventMessage.SetName))]
     public static void SetMessageName(ref string text)
     {
-        if (!Config.Translation.Value) return;
+        if (!Config.Translation.Value)
+            return;
 
         if (PatchManager.TryGetCurrentNovel(out _))
         {
-            if (Mod.Translation.Names.TryGetValue(text, out string name))
+            if (Plugin.Trans.Names.TryGetValue(text, out string name))
                 text = name;
         }
     }
@@ -73,7 +73,7 @@ public static class TranslationPatch
     [HarmonyPatch(typeof(EventText), nameof(EventText.Parse))]
     public static void SetMessageText(EventText __instance, ref string message)
     {
-        if (PatchManager.TryGetCurrentNovel(out var translation))
+        if (Config.Translation.Value && PatchManager.TryGetCurrentNovel(out var translation))
         {
             if (translation.TryGetValue(message, out string text))
                 message = text;

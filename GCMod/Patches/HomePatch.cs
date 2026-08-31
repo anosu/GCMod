@@ -8,7 +8,7 @@ namespace GCMod.Patches;
 /// 主页台词翻译与字体补丁。
 /// </summary>
 [HarmonyPatch]
-public static class HomeWordPatch
+public static class HomePatch
 {
     /// <summary>
     /// 翻译主页显示的角色台词。
@@ -17,9 +17,10 @@ public static class HomeWordPatch
     [HarmonyPatch(typeof(UnitWordMasterBase), nameof(UnitWordMasterBase.Word), MethodType.Getter)]
     public static void SetHomeWord(ref string __result)
     {
-        if (!Config.Translation.Value) return;
+        if (!Config.Translation.Value)
+            return;
 
-        if (Mod.Translation.Words.TryGetValue(__result, out string text))
+        if (Plugin.Trans.Words.TryGetValue(__result, out string text))
             __result = text;
     }
 
@@ -32,15 +33,15 @@ public static class HomeWordPatch
     {
         if (Config.Translation.Value)
         {
-            if (!Mod.Font.IsFontValid())
-                Mod.Font.EnsureLoaded();
-
             if (VisualPatch.OriginalFontAsset == null)
                 VisualPatch.OriginalFontAsset = __instance._wordText.font;
 
-            __instance._wordText.font = Mod.Font.FontAsset;
-            __instance._wordText.lineSpacing = 24f;
-            __instance._wordText.paragraphSpacing = 8f;
+            if (Plugin.Trans.Font.IsLoaded)
+            {
+                __instance._wordText.font = Plugin.Trans.Font.Asset;
+                __instance._wordText.lineSpacing = 24f;
+                __instance._wordText.paragraphSpacing = 8f;
+            }
         }
         else
         {

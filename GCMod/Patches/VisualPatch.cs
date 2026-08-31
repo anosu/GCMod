@@ -15,12 +15,21 @@ public static class VisualPatch
     public static Image NormalFrame;
     public static Image CgModeFrame;
     public static Image BaseNameFrame;
-    public static readonly Color DefaultNameColor = new(0.957f, 0.957f, 0.914f);
     public static TMP_FontAsset OriginalFontAsset;
+
+    /// <summary>默认样式常量。</summary>
+    private static class Defaults
+    {
+        public static readonly Color NameColor = new(0.957f, 0.957f, 0.914f);
+        public const float FaceDilate = 0f;
+        public const float OutlineWidth = 0f;
+        public const float OutlineSoftness = 0f;
+    }
 
     private static void ApplyImageAlpha(Image image, float alpha)
     {
-        if (image == null) return;
+        if (image == null)
+            return;
         var color = image.color;
         color.a = alpha;
         image.color = color;
@@ -29,7 +38,7 @@ public static class VisualPatch
     /// <summary>
     /// 应用自定义文本样式（颜色、描边、间距）。
     /// </summary>
-    public static void ModifyText(TextMeshProUGUI text, Color color)
+    public static void ApplyTextStyle(TextMeshProUGUI text, Color color)
     {
         text.color = color;
         text.fontMaterial.EnableKeyword("OUTLINE_ON");
@@ -42,13 +51,13 @@ public static class VisualPatch
     /// <summary>
     /// 还原文本到默认样式。
     /// </summary>
-    public static void CancelModifyText(TextMeshProUGUI text, Color color)
+    public static void ResetTextStyle(TextMeshProUGUI text, Color color)
     {
         text.color = color;
-        text.fontMaterial.SetFloat("_FaceDilate", 0f);
+        text.fontMaterial.SetFloat("_FaceDilate", Defaults.FaceDilate);
         text.fontMaterial.SetColor("_OutlineColor", Color.black);
-        text.fontMaterial.SetFloat("_OutlineWidth", 0f);
-        text.fontMaterial.SetFloat("_OutlineSoftness", 0f);
+        text.fontMaterial.SetFloat("_OutlineWidth", Defaults.OutlineWidth);
+        text.fontMaterial.SetFloat("_OutlineSoftness", Defaults.OutlineSoftness);
         text.fontMaterial.DisableKeyword("OUTLINE_ON");
     }
 
@@ -59,7 +68,6 @@ public static class VisualPatch
     [HarmonyPatch(typeof(EventTitle), nameof(EventTitle.ShowBlurEffect))]
     public static void SetMessageTitleFont(EventTitle __instance)
     {
-        if (!Config.Translation.Value) return;
         if (PatchManager.TryGetCurrentNovel(out _))
             PatchManager.ApplyTranslationFont(__instance._TitleMain);
     }
@@ -75,9 +83,9 @@ public static class VisualPatch
             PatchManager.ApplyTranslationFont(__instance.MessageName);
 
         if (Config.ModifyText.Value)
-            ModifyText(__instance.MessageName, Config.NameTextColor);
+            ApplyTextStyle(__instance.MessageName, Config.NameTextColor);
         else
-            CancelModifyText(__instance.MessageName, DefaultNameColor);
+            ResetTextStyle(__instance.MessageName, Defaults.NameColor);
     }
 
     /// <summary>
@@ -85,13 +93,17 @@ public static class VisualPatch
     /// </summary>
     [HarmonyPostfix]
     [HarmonyPatch(typeof(EventText), nameof(EventText.SetRuby))]
-    public static void SetMessageTextFont(GameObject go, EventText.Letter letter, ref TextMeshProUGUI text)
+    public static void SetMessageTextFont(
+        GameObject go,
+        EventText.Letter letter,
+        ref TextMeshProUGUI text
+    )
     {
         if (PatchManager.TryGetCurrentNovel(out _))
             PatchManager.ApplyTranslationFont(text);
 
         if (Config.ModifyText.Value)
-            ModifyText(text, Config.MessageTextColor);
+            ApplyTextStyle(text, Config.MessageTextColor);
     }
 
     /// <summary>

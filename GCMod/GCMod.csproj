@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <GameDir>E:\Games\DMM GAMES\girlscreation_r</GameDir>
     <Authors>Jitsu</Authors>
@@ -33,13 +32,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <GameDlls Include="$(GameDir)\BepInEx\interop\*.dll">
-    </GameDlls>
+    <GameDlls Include="$(GameDir)\BepInEx\interop\*.dll"></GameDlls>
     <Reference Include="@(GameDlls)">
       <Private>false</Private>
     </Reference>
     <Reference Include="Utility">
-      <HintPath>..\..\Utility\Utility\bin\Release\netstandard2.1\Utility.dll</HintPath>
+      <HintPath>..\..\Utility\Utility\bin\Release\net6.0\Utility.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
