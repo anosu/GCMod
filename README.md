@@ -185,6 +185,12 @@ GCMod/
 
 ---
 
+## 🛠️ 开发指南
+
+开发环境、Utility 源码引用和 CSharpier 格式化见 [构建说明](docs/BUILDING.md)。
+
+---
+
 ## 📦 翻译数据
 
 翻译语料由 DeepSeek-V4 生成，托管在独立仓库中：

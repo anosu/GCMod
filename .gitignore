@@ -1,3 +1,9 @@
+# Machine-specific build and shared source configuration
+/Build.local.props
+/SharedDependencies.local.props
+/artifacts/
+/.build-check/
+
 bin
 obj
 node_modules

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <GameDir>D:/Games/girlscreation_r</GameDir>
+    <!-- Optional: use a separate directory containing PC BepInEx interop DLLs. -->
+    <!-- <GameInteropDir>D:/Interop/girlscreation_r</GameInteropDir> -->
+  </PropertyGroup>
+</Project>
