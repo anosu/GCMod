@@ -36,6 +36,7 @@ namespace GCMod
         public static ConfigEntry<string> TranslationCDN;
         public static ConfigEntry<string> TranslationLanguage;
         public static ConfigEntry<bool> AsyncMode;
+        public static ConfigEntry<string[]> MasterDataTables;
         #endregion
 
         #region Font
@@ -105,25 +106,47 @@ namespace GCMod
                 "Translation",
                 "Enabled",
                 true,
-                "是否开启游戏内剧情翻译"
+                "是否开启游戏内翻译（剧情与主数据）"
             );
             TranslationCDN = Plugin.ConfigFile.Bind(
                 "Translation",
                 "CDN",
                 "https://raw.githubusercontent.com/anosu/girlscreaionr-translation/refs/heads/main",
-                "翻译加载的CDN"
+                "翻译仓库或本地服务的根地址，自动拼接 /translations/<Language>/"
             );
             TranslationLanguage = Plugin.ConfigFile.Bind(
                 "Translation",
                 "Language",
-                "zh_Hans",
-                "翻译语言，取值范围：[zh_Hans]"
+                "zh-Hans",
+                "翻译语言，取值范围：[zh-Hans]"
             );
             AsyncMode = Plugin.ConfigFile.Bind(
                 "Translation",
                 "AsyncMode",
                 false,
-                "异步请求翻译（不会造成加载界面卡顿，但翻译可能延迟显示）"
+                "异步请求剧情翻译；关闭时剧情与主数据入口最多等待 10 秒，超时保留原文并继续后台加载。主数据始终使用此等待上限"
+            );
+            if (!TomlTypeConverter.CanConvert(typeof(string[])))
+            {
+                TomlTypeConverter.AddConverter(
+                    typeof(string[]),
+                    new TypeConverter
+                    {
+                        ConvertToString = (value, _) => string.Join(", ", (string[])value),
+                        ConvertToObject = (value, _) =>
+                            value.Split(
+                                ',',
+                                StringSplitOptions.TrimEntries
+                                    | StringSplitOptions.RemoveEmptyEntries
+                            ),
+                    }
+                );
+            }
+            MasterDataTables = Plugin.ConfigFile.Bind(
+                "Translation.MasterData",
+                "EnabledTables",
+                new[] { "*" },
+                "启用翻译的主数据表名，逗号分隔。默认 * 启用全部；也可指定 mItems, mUnits 等表名，留空全部关闭。区分大小写，更改后通常需重启游戏。"
             );
             #endregion
 
@@ -131,7 +154,7 @@ namespace GCMod
             FontBundlePath = Plugin.ConfigFile.Bind(
                 "Translation.Font",
                 "AssetBundlePath",
-                $"{MyPluginInfo.PLUGIN_GUID}/fonts/TsukuARdGothic-Std-Bold",
+                $"{MyPluginInfo.PLUGIN_GUID}/fonts/tsukuardgothic-std-medium",
                 "TMP字体AssetBundle的路径，默认相对于插件目录，也可使用绝对路径"
             );
             #endregion
@@ -141,13 +164,13 @@ namespace GCMod
                 "Message.Window",
                 "NormalAlpha",
                 0f,
-                "普通剧情中的对话框透明度，默认完全透明"
+                "普通剧情中的对话框不透明度，默认完全透明"
             );
             CgModeAlpha = Plugin.ConfigFile.Bind(
                 "Message.Window",
                 "CgModeAlpha",
                 0f,
-                "寝室剧情中的对话框透明度，默认完全透明"
+                "寝室剧情中的对话框不透明度，默认完全透明"
             );
             #endregion
 
@@ -197,7 +220,7 @@ namespace GCMod
             CharacterSpacing = Plugin.ConfigFile.Bind(
                 "Message.Text",
                 "CharacterSpacing",
-                0f,
+                0.1f,
                 "字间距，仅对消息文本设置，不应用于人物名"
             );
             #endregion
@@ -211,10 +234,11 @@ namespace GCMod
             Plugin.ConfigFile.SettingChanged += (_, e) =>
             {
                 var c = e.ChangedSetting;
-                Plugin.Log.LogInfo(
-                    $"[{c.Definition.Section}] {c.Definition.Key} => {c.BoxedValue}"
-                );
-                Toast.Info($"[{c.Definition.Section}]", $"{c.Definition.Key} => {c.BoxedValue}");
+                var value = c.BoxedValue is string[] values
+                    ? string.Join(", ", values)
+                    : c.BoxedValue;
+                Plugin.Log.LogInfo($"[{c.Definition.Section}] {c.Definition.Key} => {value}");
+                Toast.Info($"[{c.Definition.Section}]", $"{c.Definition.Key} => {value}");
             };
         }
 

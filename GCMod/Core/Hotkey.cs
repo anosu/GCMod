@@ -44,6 +44,7 @@ public class Hotkey : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F10) && CanTrigger(KeyCode.F10))
         {
             Plugin.ConfigFile.Reload();
+            Plugin.Trans.Refresh();
             Logger.Info("Config reloaded");
         }
     }
@@ -54,6 +55,8 @@ public class Hotkey : MonoBehaviour
         {
             var entry = getter();
             entry.Value = !entry.Value;
+            if (ReferenceEquals(entry, Config.Translation) && Config.Translation.Value)
+                _ = Plugin.Trans.LoadTranslationAsync();
         }
     }
 

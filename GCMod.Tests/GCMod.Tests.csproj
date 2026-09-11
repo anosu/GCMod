@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- 翻译和缓存逻辑不依赖游戏进程，直接测试生产源文件。 -->
+        <Compile
+            Include="../GCMod/Services/MasterDataTranslator.cs"
+            Link="Source/MasterDataTranslator.cs"
+        />
+        <Compile
+            Include="../GCMod/Services/TranslationCache.cs"
+            Link="Source/TranslationCache.cs"
+        />
+        <Compile Include="../GCMod/Services/TranslationHash.cs" Link="Source/TranslationHash.cs" />
+        <Compile
+            Include="../GCMod/Services/TranslationPaths.cs"
+            Link="Source/TranslationPaths.cs"
+        />
+        <Compile Include="../GCMod/Models/Manifest.cs" Link="Source/Manifest.cs" />
+        <Compile
+            Include="../GCMod/Services/TranslationSession.cs"
+            Link="Source/TranslationSession.cs"
+        />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+        <PackageReference Include="xunit" Version="2.9.2" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
+    </ItemGroup>
+</Project>

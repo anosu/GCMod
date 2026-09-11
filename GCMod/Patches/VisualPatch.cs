@@ -15,7 +15,6 @@ public static class VisualPatch
     public static Image NormalFrame;
     public static Image CgModeFrame;
     public static Image BaseNameFrame;
-    public static TMP_FontAsset OriginalFontAsset;
 
     /// <summary>默认样式常量。</summary>
     private static class Defaults
@@ -62,26 +61,12 @@ public static class VisualPatch
     }
 
     /// <summary>
-    /// 标题字体替换。
-    /// </summary>
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(EventTitle), nameof(EventTitle.ShowBlurEffect))]
-    public static void SetMessageTitleFont(EventTitle __instance)
-    {
-        if (PatchManager.TryGetCurrentNovel(out _))
-            PatchManager.ApplyTranslationFont(__instance._TitleMain);
-    }
-
-    /// <summary>
     /// 人名字体替换 + 文本样式应用。
     /// </summary>
     [HarmonyPostfix]
     [HarmonyPatch(typeof(EventMessage), nameof(EventMessage.SetName))]
     public static void SetMessageNameFont(EventMessage __instance)
     {
-        if (PatchManager.TryGetCurrentNovel(out _))
-            PatchManager.ApplyTranslationFont(__instance.MessageName);
-
         if (Config.ModifyText.Value)
             ApplyTextStyle(__instance.MessageName, Config.NameTextColor);
         else
@@ -99,9 +84,6 @@ public static class VisualPatch
         ref TextMeshProUGUI text
     )
     {
-        if (PatchManager.TryGetCurrentNovel(out _))
-            PatchManager.ApplyTranslationFont(text);
-
         if (Config.ModifyText.Value)
             ApplyTextStyle(text, Config.MessageTextColor);
     }

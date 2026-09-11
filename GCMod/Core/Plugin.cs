@@ -22,6 +22,7 @@ public class Plugin : BasePlugin
     private const int HttpTimeoutSeconds = 30;
     private const int PooledConnectionLifetimeMinutes = 5;
     private const int PooledConnectionIdleTimeoutMinutes = 2;
+    private static HttpClient _httpClient;
 
     public static ConfigFile ConfigFile;
     public static new ManualLogSource Log;
@@ -50,9 +51,17 @@ public class Plugin : BasePlugin
         GCMod.Config.Initialize();
         Instance = AddComponent<Hotkey>();
 
-        Initialize();
-        PatchManager.Initialize();
-        Trans.Initialize();
+        try
+        {
+            Initialize();
+            PatchManager.Initialize();
+            Trans.Initialize();
+        }
+        catch
+        {
+            Unload();
+            throw;
+        }
 
         Toast.Success(
             MyPluginInfo.PLUGIN_NAME,
@@ -62,7 +71,7 @@ public class Plugin : BasePlugin
 
     private static void Initialize()
     {
-        var httpClient = new HttpClient(
+        _httpClient = new HttpClient(
             new SocketsHttpHandler
             {
                 PooledConnectionLifetime = TimeSpan.FromMinutes(PooledConnectionLifetimeMinutes),
@@ -75,23 +84,41 @@ public class Plugin : BasePlugin
             Timeout = TimeSpan.FromSeconds(HttpTimeoutSeconds),
         };
 
-        var cache = new TranslationCache(
-            GCMod.Config.TranslationCDN.Value,
-            Path.Combine(Paths.PluginPath, MyPluginInfo.PLUGIN_GUID, "cache"),
-            GCMod.Config.TranslationLanguage.Value,
-            httpClient
-        );
-
         string path = GCMod.Config.FontBundlePath.Value;
         string resolvedPath = Path.IsPathRooted(path) ? path : Path.Combine(Paths.PluginPath, path);
 
         var font = new AssetBundleLoader<TMP_FontAsset>(resolvedPath);
-        Trans = new TranslationManager(cache, font);
+        Trans = new TranslationManager(
+            () =>
+                new TranslationCache(
+                    GCMod.Config.TranslationCDN.Value,
+                    Path.Combine(Paths.PluginPath, MyPluginInfo.PLUGIN_GUID, "translations"),
+                    GCMod.Config.TranslationLanguage.Value,
+                    _httpClient
+                ),
+            font
+        );
+        MasterDataPatch.JsonRewriter = (attribute, json) =>
+            attribute == null ? json : Trans.TranslateMasterData(attribute.Object, json);
     }
 
     public override bool Unload()
     {
+        if (!PatchManager.Uninstall())
+        {
+            Log.LogWarning(
+                "Cannot unload while a master data callback is active; retry after loading finishes"
+            );
+            return false;
+        }
+        Trans?.Dispose();
+        MasterDataPatch.JsonRewriter = null;
+        _httpClient?.Dispose();
+        _httpClient = null;
+        if (Instance != null)
+            UnityEngine.Object.Destroy(Instance);
+        Instance = null;
         Toast.Clear();
-        return base.Unload();
+        return true;
     }
 }

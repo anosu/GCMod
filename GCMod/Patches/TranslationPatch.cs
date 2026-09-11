@@ -1,6 +1,6 @@
-using System.Threading.Tasks;
 using DMM.OLG.Unity.Engine.Internal;
 using DMM.OLG.Unity.Extensions.Novel;
+using Gc;
 using HarmonyLib;
 
 namespace GCMod.Patches;
@@ -24,12 +24,7 @@ public static class TranslationPatch
         Plugin.Log.LogInfo($"Prefix: {prefix}, Id: {id}");
         PatchManager.NovelId = int.Parse(id);
 
-        if (!Plugin.Trans.Novels.ContainsKey(PatchManager.NovelId))
-        {
-            Task task = Plugin.Trans.GetNovelTranslationAsync(PatchManager.NovelId);
-            if (!Config.AsyncMode.Value)
-                task.Wait();
-        }
+        Plugin.Trans.PrepareNovel(PatchManager.NovelId);
     }
 
     /// <summary>

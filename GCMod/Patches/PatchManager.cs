@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using HarmonyLib;
-using TMPro;
 
 namespace GCMod.Patches;
 
@@ -9,6 +8,8 @@ namespace GCMod.Patches;
 /// </summary>
 public static class PatchManager
 {
+    private static readonly List<Harmony> Installed = new();
+
     /// <summary>当前加载的剧情 Novel ID。</summary>
     public static int NovelId;
 
@@ -17,13 +18,34 @@ public static class PatchManager
     /// </summary>
     public static void Initialize()
     {
-        Harmony.CreateAndPatchAll(typeof(EnhancePatch));
-        Harmony.CreateAndPatchAll(typeof(TranslationPatch));
-        Harmony.CreateAndPatchAll(typeof(VisualPatch));
-        Harmony.CreateAndPatchAll(typeof(HomePatch));
+        if (Installed.Count > 0)
+            return;
+        try
+        {
+            Installed.Add(Harmony.CreateAndPatchAll(typeof(EnhancePatch)));
+            Installed.Add(Harmony.CreateAndPatchAll(typeof(TranslationPatch)));
+            Installed.Add(Harmony.CreateAndPatchAll(typeof(VisualPatch)));
+            MasterDataPatch.Install();
 #if DEBUG
-        Harmony.CreateAndPatchAll(typeof(DebugPatch));
+            Installed.Add(Harmony.CreateAndPatchAll(typeof(DebugPatch)));
 #endif
+        }
+        catch
+        {
+            Uninstall();
+            throw;
+        }
+    }
+
+    /// <summary>撤销本插件安装的补丁；加载回调执行中时返回 false。</summary>
+    public static bool Uninstall()
+    {
+        if (!MasterDataPatch.TryUninstall())
+            return false;
+        foreach (var harmony in Installed)
+            harmony.UnpatchSelf();
+        Installed.Clear();
+        return true;
     }
 
     /// <summary>
@@ -33,15 +55,6 @@ public static class PatchManager
     {
         translation = null;
         return Config.Translation.Value
-            && Plugin.Trans.Novels.TryGetValue(NovelId, out translation);
-    }
-
-    /// <summary>
-    /// 对 TMP 文本组件应用翻译字体（带空安全检查）。
-    /// </summary>
-    public static void ApplyTranslationFont(TextMeshProUGUI text)
-    {
-        if (text != null && Plugin.Trans.Font.IsLoaded)
-            text.font = Plugin.Trans.Font.Asset;
+            && Plugin.Trans.TryGetNovelTranslation(NovelId, out translation);
     }
 }

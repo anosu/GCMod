@@ -1,87 +1,178 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
 using TMPro;
+using UnityEngine;
 using Utility.Assets;
-using Utility.Notifications;
 
 namespace GCMod.Services;
 
-/// <summary>
-/// 翻译管理器：协调翻译数据的加载、缓存和查询。
-/// 内部持有所有翻译数据。
-/// </summary>
-public class TranslationManager
+/// <summary>协调游戏线程上的字体、配置刷新和有时限的翻译消费。</summary>
+public sealed class TranslationManager : IDisposable
 {
-    private readonly TranslationCache _cache;
+    private static readonly IReadOnlyDictionary<string, string> EmptyNames =
+        new Dictionary<string, string>();
+    private static readonly TimeSpan WaitLimit = TimeSpan.FromSeconds(10);
+    private readonly Func<TranslationCache> _createCache;
     private readonly AssetBundleLoader<TMP_FontAsset> _font;
+    private TranslationSession _session;
+    private IEnumerator _fontLoad;
+    private Coroutine _fontCoroutine;
+    private bool _disposed;
 
-    public Dictionary<string, string> Names { get; private set; } = [];
-    public Dictionary<string, string> Words { get; private set; } = [];
-    public Dictionary<int, Dictionary<string, string>> Novels { get; private set; } = [];
+    /// <summary>当前语言已加载的人物名。</summary>
+    public IReadOnlyDictionary<string, string> Names =>
+        Volatile.Read(ref _session)?.Names ?? EmptyNames;
     public AssetBundleLoader<TMP_FontAsset> Font => _font;
 
-    public TranslationManager(TranslationCache cache, AssetBundleLoader<TMP_FontAsset> font)
+    public TranslationManager(
+        Func<TranslationCache> createCache,
+        AssetBundleLoader<TMP_FontAsset> font
+    )
     {
-        _cache = cache;
+        _createCache = createCache;
         _font = font;
+        _session = new TranslationSession(createCache());
     }
 
+    /// <summary>加载字体，并提前请求人物名与启用的主数据翻译。</summary>
     public void Initialize()
     {
-        Plugin.Instance.StartCoroutine(_font.Load().WrapToIl2Cpp());
+        _fontLoad = _font.Load(
+            () =>
+            {
+                if (!_disposed && !TMP_Settings.fallbackFontAssets.Contains(_font.Asset))
+                {
+                    TMP_Settings.fallbackFontAssets.Add(_font.Asset);
+                    Logger.Info($"Font loaded: {_font.Asset.name}");
+                }
+            },
+            error => Logger.Error($"Font load failed: {error.Message}")
+        );
+        _fontCoroutine = Plugin.Instance.StartCoroutine(_fontLoad.WrapToIl2Cpp());
         _ = LoadTranslationAsync();
     }
 
+    /// <summary>按当前 CDN/语言创建新会话，取消旧会话，重新验证翻译文件。</summary>
+    public void Refresh()
+    {
+        if (_disposed)
+            return;
+        var replacement = new TranslationSession(_createCache());
+        Interlocked.Exchange(ref _session, replacement)?.Dispose();
+        _ = LoadTranslationAsync();
+    }
+
+    /// <summary>预加载翻译；观察后台错误，取消旧会话时不弹出失败通知。</summary>
     public async Task LoadTranslationAsync()
     {
-        if (!Config.Translation.Value)
+        var session = Volatile.Read(ref _session);
+        if (session == null || !Config.Translation.Value)
             return;
-
-        await _cache.FetchManifestAsync();
-
-        var nameTask = _cache.LoadAsync(TranslationPaths.Names);
-        var wordTask = _cache.LoadAsync(TranslationPaths.Words);
-        await Task.WhenAll(nameTask, wordTask);
-
-        if (nameTask.Result != null)
+        try
         {
-            Names = nameTask.Result;
-            Logger.Info($"Character names translation loaded. Total: {Names.Count}");
+            Task names = session.GetNamesAsync();
+            Task master =
+                Config.MasterDataTables.Value.Length > 0
+                    ? session.GetMasterAsync()
+                    : Task.CompletedTask;
+            await Task.WhenAll(names, master).ConfigureAwait(false);
         }
-        else
+        catch (OperationCanceledException) { }
+        catch (Exception e)
         {
-            Logger.Warn("Character names translation load failed");
-            Toast.Warning("加载失败", "角色名称翻译加载失败");
-        }
-
-        if (wordTask.Result != null)
-        {
-            Words = wordTask.Result;
-            Logger.Info($"Character words translation loaded. Total: {Words.Count}");
-        }
-        else
-        {
-            Logger.Warn("Character words translation load failed");
-            Toast.Warning("加载失败", "角色台词翻译加载失败");
+            Logger.Error($"Translation preload failed: {e.Message}");
         }
     }
 
-    public async Task GetNovelTranslationAsync(int novelId)
+    /// <summary>查询当前会话已加载的剧情翻译。</summary>
+    public bool TryGetNovelTranslation(int id, out Dictionary<string, string> translations)
     {
-        if (Novels.ContainsKey(novelId))
-            return;
+        translations = null;
+        return Volatile.Read(ref _session)?.TryGetNovel(id, out translations) == true;
+    }
 
-        var translations = await _cache.LoadAsync(TranslationPaths.Novels, novelId.ToString());
-        if (translations != null)
-        {
-            Novels[novelId] = translations;
-            Logger.Info($"Scenario translation loaded. Total: {translations.Count}");
-        }
+    /// <summary>准备剧情翻译；同步模式最多等待 10 秒，异步模式只预加载。</summary>
+    public void PrepareNovel(int id)
+    {
+        var session = Volatile.Read(ref _session);
+        if (session == null || !Config.Translation.Value)
+            return;
+        var task = session.GetNovelAsync(id);
+        if (Config.AsyncMode.Value)
+            _ = ObserveAsync(task, $"novel/{id}");
         else
+            WaitFor(task, $"novel/{id}");
+    }
+
+    /// <summary>替换已启用数据表的 JSON；翻译未就绪时最多等待 10 秒。</summary>
+    public string TranslateMasterData(string tableName, string json)
+    {
+        string[] enabled = Config.MasterDataTables.Value;
+        var session = Volatile.Read(ref _session);
+        if (
+            session == null
+            || !Config.Translation.Value
+            || !MasterDataTranslator.IsEnabled(tableName, enabled)
+        )
+            return json;
+        var translator = WaitFor(session.GetMasterAsync(), "master");
+        string result = translator?.Translate(tableName, json, enabled) ?? json;
+        if (!ReferenceEquals(result, json))
+            Logger.Info($"Master data translated: {tableName}");
+        return result;
+    }
+
+    private static T WaitFor<T>(Task<T> task, string resource)
+        where T : class
+    {
+        try
         {
-            Logger.Warn($"Translations loaded failed: {novelId}");
-            Toast.Warning("加载失败", $"剧本ID: {novelId}");
+            return task.WaitAsync(WaitLimit).GetAwaiter().GetResult();
         }
+        catch (TimeoutException)
+        {
+            Logger.Warn(
+                $"Translation wait timed out: {resource}; keeping original text while loading continues"
+            );
+            _ = ObserveAsync(task, resource);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e)
+        {
+            Logger.Error($"Translation load failed: {resource}: {e.Message}");
+        }
+        return null;
+    }
+
+    private static async Task ObserveAsync(Task task, string resource)
+    {
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e)
+        {
+            Logger.Error($"Translation load failed: {resource}: {e.Message}");
+        }
+    }
+
+    /// <summary>取消翻译请求和字体协程，撤销全局字体后备注册。</summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        Interlocked.Exchange(ref _session, null)?.Dispose();
+        if (_fontCoroutine != null)
+            Plugin.Instance.StopCoroutine(_fontCoroutine);
+        (_fontLoad as IDisposable)?.Dispose();
+        if (_font.IsLoaded)
+            TMP_Settings.fallbackFontAssets.Remove(_font.Asset);
+        // 已赋给游戏组件的字体仍可能被使用，不在此销毁 Unity 对象。
     }
 }

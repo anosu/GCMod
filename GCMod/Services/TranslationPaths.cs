@@ -11,26 +11,25 @@ public static class TranslationPaths
 {
     public const string Manifest = "manifest";
     public const string Names = "names";
-    public const string Words = "words";
+    public const string Master = "master";
     public const string Novels = "novels";
 
     /// <summary>
     /// 构建远程资源 URL。
     /// </summary>
     /// <param name="cdn">CDN 根地址（已去除尾部斜杠）。</param>
-    /// <param name="type">资源类型（manifest/names/words/novels）。</param>
+    /// <param name="type">资源类型（manifest/names/master/novels）。</param>
     /// <param name="language">语言代码。</param>
     /// <param name="id">可选的资源 ID（如 novelId）。</param>
     /// <returns>完整的远程 URL。</returns>
     /// <exception cref="ArgumentException">当类型未知或 novels 类型缺少 ID 时抛出。</exception>
     public static string BuildRemoteUrl(string cdn, string type, string language, string id = null)
     {
+        string root = $"{cdn.TrimEnd('/')}/translations/{language}";
         return type switch
         {
-            Manifest => $"{cdn}/manifest/{language}.json",
-            Names => $"{cdn}/names/{language}.json",
-            Words => $"{cdn}/words/{language}.json",
-            Novels when id != null => $"{cdn}/novels/{id}/{language}.json",
+            Manifest or Names or Master => $"{root}/{type}.json",
+            Novels when id != null => $"{root}/novels/{id}.json",
             Novels => throw new ArgumentException("Novel ID is required for novels type"),
             _ => throw new ArgumentException($"Unknown translation type: {type}"),
         };
@@ -40,7 +39,7 @@ public static class TranslationPaths
     /// 构建本地缓存文件路径。
     /// </summary>
     /// <param name="cacheDir">缓存根目录。</param>
-    /// <param name="type">资源类型（manifest/names/words/novels）。</param>
+    /// <param name="type">资源类型（manifest/names/master/novels）。</param>
     /// <param name="language">语言代码。</param>
     /// <param name="id">可选的资源 ID（如 novelId）。</param>
     /// <returns>完整的本地缓存路径。</returns>
@@ -57,7 +56,7 @@ public static class TranslationPaths
         {
             Manifest => Path.Combine(langDir, "manifest.json"),
             Names => Path.Combine(langDir, "names.json"),
-            Words => Path.Combine(langDir, "words.json"),
+            Master => Path.Combine(langDir, "master.json"),
             Novels when id != null => Path.Combine(langDir, "novels", $"{id}.json"),
             Novels => throw new ArgumentException("Novel ID is required for novels type"),
             _ => throw new ArgumentException($"Unknown translation type: {type}"),

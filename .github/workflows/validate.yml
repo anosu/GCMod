@@ -18,4 +18,5 @@ jobs:
         with:
           dotnet-version: "8.0.x"
       - run: dotnet tool restore
+      - run: dotnet test GCMod.Tests/GCMod.Tests.csproj
       - run: dotnet csharpier check .

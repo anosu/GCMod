@@ -14,8 +14,8 @@ namespace GCMod
         [JsonPropertyName("names")]
         public string Names { get; set; }
 
-        [JsonPropertyName("words")]
-        public string Words { get; set; }
+        [JsonPropertyName("master")]
+        public string Master { get; set; }
 
         [JsonPropertyName("novels")]
         public Dictionary<string, string> Novels { get; set; }
