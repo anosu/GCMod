@@ -15,6 +15,14 @@ namespace Utility.Notifications
 {
     internal static class Toast
     {
+        public static readonly System.Collections.Concurrent.ConcurrentQueue<(
+            string Title,
+            string Message
+        )> InfoMessages = new();
+
+        public static void Info(string title, string message) =>
+            InfoMessages.Enqueue((title, message));
+
         public static void Warning(string title, string message) { }
 
         public static void Error(string title, string message) { }

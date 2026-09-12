@@ -23,6 +23,13 @@
         />
         <Compile Include="../GCMod/Models/Manifest.cs" Link="Source/Manifest.cs" />
         <Compile
+            Include="../GCMod/Services/TranslationManager.cs"
+            Link="Source/TranslationManager.cs"
+        />
+        <Compile Include="../GCMod/Patches/TranslationPatch.cs" Link="Source/TranslationPatch.cs" />
+        <Compile Include="../GCMod/Patches/PatchManager.cs" Link="Source/PatchManager.cs" />
+        <Compile Include="../GCMod/Services/UpdateChecker.cs" Link="Source/UpdateChecker.cs" />
+        <Compile
             Include="../GCMod/Services/TranslationSession.cs"
             Link="Source/TranslationSession.cs"
         />

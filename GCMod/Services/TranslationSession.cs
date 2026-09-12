@@ -24,6 +24,7 @@ public sealed class TranslationSession : IDisposable, IAsyncDisposable
     private Task<Manifest> _manifest;
     private Task<Dictionary<string, string>> _names;
     private Task<MasterDataTranslator> _master;
+    private Task<MasterDataTranslator> _cachedMaster;
     private bool _disposed;
 
     /// <summary>为不可变的 CDN/语言缓存创建一个会话。</summary>
@@ -91,6 +92,24 @@ public sealed class TranslationSession : IDisposable, IAsyncDisposable
         }
     }
 
+    /// <summary>消费时优先使用已就绪的最新版本，否则先用本地副本；后台更新继续执行。</summary>
+    public async Task<MasterDataTranslator> GetMasterForUseAsync()
+    {
+        Task<MasterDataTranslator> latest = GetMasterAsync();
+        if (Ready(latest) is { } ready)
+            return ready;
+
+        Task<MasterDataTranslator> cached;
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            cached = _cachedMaster = ReuseOrStart(_cachedMaster, LoadCachedMasterAsync);
+        }
+        var local = await cached.ConfigureAwait(false);
+        _token.ThrowIfCancellationRequested();
+        return Ready(latest) ?? local ?? await latest.ConfigureAwait(false);
+    }
+
     private async Task<T> LoadAsync<T>(string type, string id = null)
         where T : class
     {
@@ -106,6 +125,17 @@ public sealed class TranslationSession : IDisposable, IAsyncDisposable
         var tables = await LoadAsync<
             Dictionary<string, Dictionary<string, Dictionary<string, string>>>
         >(TranslationPaths.Master)
+            .ConfigureAwait(false);
+        return tables == null ? null : new MasterDataTranslator(tables);
+    }
+
+    private async Task<MasterDataTranslator> LoadCachedMasterAsync()
+    {
+        var tables = await _cache
+            .LoadLocalAsync<Dictionary<string, Dictionary<string, Dictionary<string, string>>>>(
+                TranslationPaths.Master,
+                cancellationToken: _token
+            )
             .ConfigureAwait(false);
         return tables == null ? null : new MasterDataTranslator(tables);
     }
@@ -134,7 +164,7 @@ public sealed class TranslationSession : IDisposable, IAsyncDisposable
             _disposed = true;
             pending = _novels
                 .Values.Cast<Task>()
-                .Concat(new Task[] { _manifest, _names, _master })
+                .Concat(new Task[] { _manifest, _names, _master, _cachedMaster })
                 .Where(task => task != null)
                 .ToArray();
         }

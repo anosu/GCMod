@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -23,6 +24,7 @@ public class Plugin : BasePlugin
     private const int PooledConnectionLifetimeMinutes = 5;
     private const int PooledConnectionIdleTimeoutMinutes = 2;
     private static HttpClient _httpClient;
+    private static CancellationTokenSource _updateCheckCancellation;
 
     public static ConfigFile ConfigFile;
     public static new ManualLogSource Log;
@@ -66,6 +68,12 @@ public class Plugin : BasePlugin
         Toast.Success(
             MyPluginInfo.PLUGIN_NAME,
             $"Mod 加载成功，版本: {MyPluginInfo.PLUGIN_VERSION}"
+        );
+        _updateCheckCancellation = new CancellationTokenSource();
+        _ = UpdateChecker.CheckAsync(
+            _httpClient,
+            MyPluginInfo.PLUGIN_VERSION,
+            _updateCheckCancellation.Token
         );
     }
 
@@ -113,6 +121,9 @@ public class Plugin : BasePlugin
         }
         Trans?.Dispose();
         MasterDataPatch.JsonRewriter = null;
+        _updateCheckCancellation?.Cancel();
+        _updateCheckCancellation?.Dispose();
+        _updateCheckCancellation = null;
         _httpClient?.Dispose();
         _httpClient = null;
         if (Instance != null)

@@ -69,6 +69,22 @@ public sealed class TranslationCache
         CancellationToken cancellationToken = default
     ) => LoadAsync<Dictionary<string, string>>(type, id, cancellationToken);
 
+    /// <summary>只读取本地可用副本，不等待网络锁，也不将旧副本放进远程请求的内存缓存。</summary>
+    public async Task<T> LoadLocalAsync<T>(
+        string type,
+        string id = null,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        string path = TranslationPaths.BuildCachePath(_cacheDir, type, _language, id);
+        string json = await ReadLocalAsync(path, cancellationToken).ConfigureAwait(false);
+        T data = Deserialize<T>(json, path);
+        cancellationToken.ThrowIfCancellationRequested();
+        return data;
+    }
+
     /// <summary>加载指定结构的翻译数据；缓存损坏视为未命中，磁盘写入失败不丢弃已下载的数据。</summary>
     public async Task<T> LoadAsync<T>(
         string type,

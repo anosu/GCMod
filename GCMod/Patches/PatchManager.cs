@@ -10,9 +10,6 @@ public static class PatchManager
 {
     private static readonly List<Harmony> Installed = new();
 
-    /// <summary>当前加载的剧情 Novel ID。</summary>
-    public static int NovelId;
-
     /// <summary>
     /// 创建并注册所有 Harmony 补丁。
     /// </summary>
@@ -55,6 +52,6 @@ public static class PatchManager
     {
         translation = null;
         return Config.Translation.Value
-            && Plugin.Trans.TryGetNovelTranslation(NovelId, out translation);
+            && Plugin.Trans.TryGetNovelTranslation(Plugin.Trans.CurrentNovelId, out translation);
     }
 }

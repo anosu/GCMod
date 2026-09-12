@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using GCMod.Services;
 using Xunit;
 using static GCMod.Tests.TranslationReliabilityTests;
@@ -126,6 +127,72 @@ public sealed class TranslationSessionTests : IDisposable
         {
             _ = old.GetNovelAsync(2);
         });
+    }
+
+    [Fact]
+    public async Task CachedMasterDoesNotBlockBackgroundUpdateAndFreshRulesWinWhenReady()
+    {
+        string language = Path.Combine(_directory, "zh-Hans");
+        Directory.CreateDirectory(language);
+        const string cached = """{"mTest":{"name":{"名前":"旧缓存"}}}""";
+        await File.WriteAllTextAsync(Path.Combine(language, "master.json"), cached);
+        var release = new TaskCompletionSource<HttpResponseMessage>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        using var client = new HttpClient(
+            new Handler(
+                (request, token) =>
+                    request.RequestUri.AbsolutePath.EndsWith("manifest.json")
+                        ? Task.FromResult(
+                            Json(
+                                JsonSerializer.Serialize(
+                                    new { master = TranslationHash.Compute(Master) }
+                                )
+                            )
+                        )
+                        : release.Task.WaitAsync(token)
+            )
+        );
+        await using var session = CreateSession(client);
+
+        var initial = await session.GetMasterForUseAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Contains("旧缓存", initial.Translate("mTest", """{"name":"名前"}""", ["*"]));
+        Assert.False(session.GetMasterAsync().IsCompleted);
+
+        release.SetResult(Json(Master));
+        var fresh = await session.GetMasterAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Same(fresh, await session.GetMasterForUseAsync());
+        Assert.Contains("名称", fresh.Translate("mTest", """{"name":"名前"}""", ["*"]));
+        Assert.Equal(Master, await File.ReadAllTextAsync(Path.Combine(language, "master.json")));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{broken")]
+    public async Task MissingOrCorruptMasterCacheWaitsForDownloadedRules(string local)
+    {
+        if (local != null)
+        {
+            string language = Path.Combine(_directory, "zh-Hans");
+            Directory.CreateDirectory(language);
+            await File.WriteAllTextAsync(Path.Combine(language, "master.json"), local);
+        }
+        var release = new TaskCompletionSource<HttpResponseMessage>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        using var client = new HttpClient(
+            new Handler(
+                (request, token) =>
+                    request.RequestUri.AbsolutePath.EndsWith("manifest.json")
+                        ? Task.FromResult(Json("{}"))
+                        : release.Task.WaitAsync(token)
+            )
+        );
+        await using var session = CreateSession(client);
+        var ready = session.GetMasterForUseAsync();
+        Assert.False(ready.IsCompleted);
+        release.SetResult(Json(Master));
+        Assert.NotNull(await ready.WaitAsync(TimeSpan.FromSeconds(2)));
     }
 
     private TranslationSession CreateSession(

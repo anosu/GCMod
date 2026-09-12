@@ -18,13 +18,8 @@ public static class TranslationPatch
     [HarmonyPatch(typeof(ScriptObjectManager), nameof(ScriptObjectManager.Create))]
     public static void SetupTranslation(string prefix, string id)
     {
-        if (!Config.Translation.Value)
-            return;
-
         Plugin.Log.LogInfo($"Prefix: {prefix}, Id: {id}");
-        PatchManager.NovelId = int.Parse(id);
-
-        Plugin.Trans.PrepareNovel(PatchManager.NovelId);
+        Plugin.Trans.PrepareNovel(int.Parse(id));
     }
 
     /// <summary>
