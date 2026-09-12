@@ -112,7 +112,7 @@
 | 配置项      | 默认值                                                                              | 说明                                               |
 | ----------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- |
 | `Enabled`   | `true`                                                                              | 是否开启剧情和主数据翻译                             |
-| `CDN`       | `https://raw.githubusercontent.com/anosu/girlscreaionr-translation/refs/heads/main` | 翻译数据 CDN 地址                                  |
+| `CDN`       | `https://raw.githubusercontent.com/anosu/girlscreation-translation/refs/heads/main` | 翻译数据 CDN 地址                                  |
 | `Language`  | `zh-Hans`                                                                           | 翻译语言（旧配置需改为 `zh-Hans`）                   |
 | `AsyncMode` | `false`                                                                             | 异步加载剧情翻译；同步入口和主数据入口最多等待 10 秒 |
 
@@ -216,7 +216,7 @@ GCMod/
 
 翻译语料由 DeepSeek-V4 生成，托管在独立仓库中：
 
-👉 [girlscreaionr-translation](https://github.com/anosu/girlscreaionr-translation)
+👉 [girlscreation-translation](https://github.com/anosu/girlscreation-translation)
 
 翻译缓存系统通过 Manifest 文件的哈希校验实现增量更新，避免每次重复下载未变更的翻译数据。
 

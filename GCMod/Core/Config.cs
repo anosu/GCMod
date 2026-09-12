@@ -111,7 +111,7 @@ namespace GCMod
             TranslationCDN = Plugin.ConfigFile.Bind(
                 "Translation",
                 "CDN",
-                "https://raw.githubusercontent.com/anosu/girlscreaionr-translation/refs/heads/main",
+                "https://raw.githubusercontent.com/anosu/girlscreation-translation/refs/heads/main",
                 "翻译仓库或本地服务的根地址，自动拼接 /translations/<Language>/"
             );
             TranslationLanguage = Plugin.ConfigFile.Bind(
