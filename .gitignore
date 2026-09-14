@@ -47,3 +47,10 @@ vsix/
 res
 superpowers
 /*.local.slnx
+
+artifacts/
+**/bin/
+**/obj/
+*.local.slnx
+SharedDependencies.local.props
+Build.local.props

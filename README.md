@@ -242,7 +242,7 @@ GCMod/
 
 `[]` 仅替换数组第 0 项；`|` 仅替换第一个分隔符前的文本；无后缀则替换完整字符串。其他语言、未声明字段、未命中原文、空译文均保持不变。字段规则在加载翻译表时预处理一次。修改翻译表后需用翻译仓库的 `scripts/build.py` 更新清单，再按 F10 刷新；已经加载的主数据通常仍需重启游戏。
 
-不依赖游戏环境的翻译与缓存测试：`dotnet test GCMod.Tests/GCMod.Tests.csproj`。
+不依赖游戏环境的翻译与缓存测试：`dotnet test tests/GCMod.Tests/GCMod.Tests.csproj`。
 
 ---
 
@@ -275,3 +275,7 @@ GCMod/
 ---
 
 > 💬 遇到问题？欢迎提交 [Issue](https://github.com/anosu/GCMod/issues) 或直接在群里 @Jitsu。
+
+## 统一工程入口
+
+源码已迁移到 `src/`，独立测试位于 `tests/`。构建、VS 联调和发布方式以 [docs/BUILDING.md](docs/BUILDING.md) 为准；项目差异配置在 `mod.json`，公共实现来自固定的 `shared/ModEngineering`。

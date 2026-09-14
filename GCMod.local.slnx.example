@@ -1,0 +1,5 @@
+<Solution>
+    <Project Path="src/GCMod/GCMod.csproj" />
+    <Project Path="tests/GCMod.Tests/GCMod.Tests.csproj" />
+    <Project Path="../Utility/src/Utility/Utility.csproj" />
+</Solution>
