@@ -8,7 +8,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile
-            Include="../../shared/Utility/src/Utility/Translation/*.cs"
+            Include="../../shared/Utility/src/Utility/Caching/*.cs;../../shared/Utility/src/Utility/Cryptography/*.cs"
             Link="Shared/%(Filename)%(Extension)"
         />
         <!-- 翻译和缓存逻辑不依赖游戏进程，直接测试生产源文件。 -->

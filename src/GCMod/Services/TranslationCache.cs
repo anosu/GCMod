@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Utility.Caching;
 using Utility.Notifications;
-using Utility.Translation;
 
 namespace GCMod.Services;
 
