@@ -208,7 +208,7 @@ GCMod/
 
 ## 🛠️ 开发指南
 
-开发环境、Utility 源码引用和 CSharpier 格式化见 [构建说明](docs/BUILDING.md)。
+开发环境、Utility 源码引用和 CSharpier 格式化见 [构建说明](https://github.com/anosu/ModEngineering/blob/main/docs/CONVENTIONS.md)。
 
 ---
 
@@ -276,6 +276,6 @@ GCMod/
 
 > 💬 遇到问题？欢迎提交 [Issue](https://github.com/anosu/GCMod/issues) 或直接在群里 @Jitsu。
 
-## 统一工程入口
+## 开发
 
-源码已迁移到 `src/`，独立测试位于 `tests/`。构建、VS 联调和发布方式以 [docs/BUILDING.md](docs/BUILDING.md) 为准；项目差异配置在 `mod.json`，公共实现来自固定的 `shared/ModEngineering`。
+源码位于 `src/`，测试位于 `tests/`。项目配置由 `.csproj` 管理，依赖版本由 Git 子模块记录。构建、VS 联调和发布命令见[公共工程说明](https://github.com/anosu/ModEngineering/blob/main/docs/CONVENTIONS.md)。

@@ -28,7 +28,10 @@ public sealed class TranslationReliabilityTests : IDisposable
                         Json(
                             request.RequestUri.AbsolutePath.EndsWith("manifest.json")
                                 ? JsonSerializer.Serialize(
-                                    new { names = TranslationHash.Compute(Data) }
+                                    new
+                                    {
+                                        names = Utility.Cryptography.StringTableHash.Compute(Data),
+                                    }
                                 )
                                 : Data
                         )
@@ -153,7 +156,10 @@ public sealed class TranslationReliabilityTests : IDisposable
                         Json(
                             request.RequestUri.AbsolutePath.EndsWith("manifest.json")
                                 ? JsonSerializer.Serialize(
-                                    new { names = TranslationHash.Compute(Data) }
+                                    new
+                                    {
+                                        names = Utility.Cryptography.StringTableHash.Compute(Data),
+                                    }
                                 )
                                 : """{"名前":"错误版本"}"""
                         )

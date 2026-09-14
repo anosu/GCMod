@@ -33,7 +33,7 @@ public sealed class TranslationCache
         _retryDelay = retryDelay ?? TimeSpan.FromSeconds(30);
         _cache = new JsonResourceCache(
             client,
-            TranslationHash.Compute,
+            Utility.Cryptography.StringTableHash.Compute,
             message => Logger.Info(message),
             message => Logger.Warn(message),
             OnFallback,

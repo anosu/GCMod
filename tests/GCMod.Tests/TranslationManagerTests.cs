@@ -91,7 +91,9 @@ public sealed class TranslationManagerTests : IDisposable
         const string master = """{"mTest":{"name":{"jp":"cached translation"}}}""";
         await File.WriteAllTextAsync(
             Path.Combine(language, "manifest.json"),
-            JsonSerializer.Serialize(new { master = TranslationHash.Compute(master) })
+            JsonSerializer.Serialize(
+                new { master = Utility.Cryptography.StringTableHash.Compute(master) }
+            )
         );
         await File.WriteAllTextAsync(Path.Combine(language, "master.json"), master);
         using var client = new HttpClient(

@@ -74,7 +74,7 @@ public class TranslationCacheTests : IDisposable
     )]
     public void HashMatchesPythonIncludingUnicodeKeys(string json, string expected)
     {
-        Assert.Equal(expected, TranslationHash.Compute(json));
+        Assert.Equal(expected, Utility.Cryptography.StringTableHash.Compute(json));
     }
 
     [Theory]

@@ -146,7 +146,12 @@ public sealed class TranslationSessionTests : IDisposable
                         ? Task.FromResult(
                             Json(
                                 JsonSerializer.Serialize(
-                                    new { master = TranslationHash.Compute(Master) }
+                                    new
+                                    {
+                                        master = Utility.Cryptography.StringTableHash.Compute(
+                                            Master
+                                        ),
+                                    }
                                 )
                             )
                         )
