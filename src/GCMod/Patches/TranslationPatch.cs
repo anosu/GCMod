@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DMM.OLG.Unity.Engine.Internal;
 using DMM.OLG.Unity.Extensions.Novel;
 using Gc;
@@ -11,6 +12,14 @@ namespace GCMod.Patches;
 [HarmonyPatch]
 public static class TranslationPatch
 {
+    private static bool TryGetCurrentNovel(out Dictionary<string, string> translation)
+    {
+        translation = null;
+        return Config.Translation.Value
+            && Plugin.Trans != null
+            && Plugin.Trans.TryGetNovelTranslation(Plugin.Trans.CurrentNovelId, out translation);
+    }
+
     /// <summary>
     /// 剧情加载时获取对应 Novel ID，触发翻译数据预加载。
     /// </summary>
@@ -29,10 +38,7 @@ public static class TranslationPatch
     [HarmonyPatch(typeof(EventTitle), nameof(EventTitle.ShowBlurEffect))]
     public static void SetMessageTitle(EventTitle __instance)
     {
-        if (!Config.Translation.Value)
-            return;
-
-        if (PatchManager.TryGetCurrentNovel(out var translation))
+        if (TryGetCurrentNovel(out var translation))
         {
             if (translation.TryGetValue(__instance._TitleMain.text, out string title))
                 __instance._TitleMain.text = title;
@@ -46,10 +52,7 @@ public static class TranslationPatch
     [HarmonyPatch(typeof(EventMessage), nameof(EventMessage.SetName))]
     public static void SetMessageName(ref string text)
     {
-        if (!Config.Translation.Value)
-            return;
-
-        if (PatchManager.TryGetCurrentNovel(out _))
+        if (TryGetCurrentNovel(out _))
         {
             if (Plugin.Trans.Names.TryGetValue(text, out string name))
                 text = name;
@@ -63,7 +66,7 @@ public static class TranslationPatch
     [HarmonyPatch(typeof(EventText), nameof(EventText.Parse))]
     public static void SetMessageText(EventText __instance, ref string message)
     {
-        if (Config.Translation.Value && PatchManager.TryGetCurrentNovel(out var translation))
+        if (TryGetCurrentNovel(out var translation))
         {
             if (translation.TryGetValue(message, out string text))
                 message = text;

@@ -1,5 +1,3 @@
-using System.Collections;
-
 // 隔离 Unity/Harmony 宿主；剧情跟踪、刷新、查询与缓存执行实际生产代码。
 namespace GCMod
 {
@@ -19,9 +17,8 @@ namespace GCMod
 
     public static class Plugin
     {
-        public static Services.TranslationManager Trans;
+        internal static Services.TranslationManager Trans;
         public static readonly TestLog Log = new();
-        public static readonly UnityEngine.MonoBehaviour Instance = new();
     }
 
     public sealed class TestLog
@@ -45,53 +42,6 @@ namespace HarmonyLib
         public static Harmony CreateAndPatchAll(Type type) => new();
 
         public void UnpatchSelf() { }
-    }
-}
-
-namespace UnityEngine
-{
-    public sealed class Coroutine { }
-
-    public sealed class MonoBehaviour
-    {
-        public Coroutine StartCoroutine(object iterator) => new();
-
-        public void StopCoroutine(Coroutine coroutine) { }
-    }
-}
-
-namespace TMPro
-{
-    public sealed class TMP_FontAsset
-    {
-        public string name;
-    }
-
-    public static class TMP_Settings
-    {
-        public static readonly List<TMP_FontAsset> fallbackFontAssets = new();
-    }
-}
-
-namespace Utility.Assets
-{
-    public sealed class AssetBundleLoader<T>
-    {
-        public T Asset;
-        public bool IsLoaded => false;
-
-        public IEnumerator Load(Action complete, Action<Exception> error)
-        {
-            yield break;
-        }
-    }
-}
-
-namespace BepInEx.Unity.IL2CPP.Utils.Collections
-{
-    public static class CoroutineExtensions
-    {
-        public static object WrapToIl2Cpp(this IEnumerator iterator) => iterator;
     }
 }
 

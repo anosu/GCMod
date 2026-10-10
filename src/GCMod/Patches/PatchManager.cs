@@ -4,7 +4,7 @@ using HarmonyLib;
 namespace GCMod.Patches;
 
 /// <summary>
-/// Harmony 补丁管理器。负责初始化所有子补丁类、提供共享工具方法。
+/// 负责安装和撤销 Harmony 与原生补丁。
 /// </summary>
 public static class PatchManager
 {
@@ -43,15 +43,5 @@ public static class PatchManager
             harmony.UnpatchSelf();
         Installed.Clear();
         return true;
-    }
-
-    /// <summary>
-    /// 尝试获取当前 Novel ID 对应的翻译字典。
-    /// </summary>
-    public static bool TryGetCurrentNovel(out Dictionary<string, string> translation)
-    {
-        translation = null;
-        return Config.Translation.Value
-            && Plugin.Trans.TryGetNovelTranslation(Plugin.Trans.CurrentNovelId, out translation);
     }
 }

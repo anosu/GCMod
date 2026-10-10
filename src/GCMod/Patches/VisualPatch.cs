@@ -12,9 +12,18 @@ namespace GCMod.Patches;
 [HarmonyPatch]
 public static class VisualPatch
 {
-    public static Image NormalFrame;
-    public static Image CgModeFrame;
-    public static Image BaseNameFrame;
+    private static Image _normalFrame;
+    private static Image _cgModeFrame;
+    private static Image _baseNameFrame;
+
+    internal static void ApplyWindowAlpha()
+    {
+        ApplyImageAlpha(_normalFrame, Config.NormalAlpha.Value);
+        ApplyImageAlpha(_baseNameFrame, Config.NormalAlpha.Value);
+        ApplyImageAlpha(_cgModeFrame, Config.CgModeAlpha.Value);
+    }
+
+    internal static void Reset() => _normalFrame = _cgModeFrame = _baseNameFrame = null;
 
     /// <summary>默认样式常量。</summary>
     private static class Defaults
@@ -100,12 +109,12 @@ public static class VisualPatch
             if (image.name == "Normal")
             {
                 ApplyImageAlpha(image, Config.NormalAlpha.Value);
-                NormalFrame = image;
+                _normalFrame = image;
             }
             if (image.name == "MessageWindow")
             {
                 ApplyImageAlpha(image, Config.CgModeAlpha.Value);
-                CgModeFrame = image;
+                _cgModeFrame = image;
             }
         }
         foreach (Image image in __instance.NameImage.GetComponentsInChildren<Image>())
@@ -113,7 +122,7 @@ public static class VisualPatch
             if (image.name == "BaseName")
             {
                 ApplyImageAlpha(image, Config.NormalAlpha.Value);
-                BaseNameFrame = image;
+                _baseNameFrame = image;
             }
         }
     }

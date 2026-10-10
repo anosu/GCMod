@@ -16,7 +16,6 @@
 - [开发指南](#-开发指南)
 - [翻译数据](#-翻译数据)
 - [常见问题](#-常见问题)
-- [致谢](#-致谢)
 
 ---
 
@@ -90,6 +89,12 @@
 | `GCMod.cfg`   | 插件功能配置（翻译、字体、样式等）   |
 
 修改 `GCMod.cfg` 后按 **`F10`** 可重载配置并刷新翻译会话。CDN、语言和翻译文件会重新加载；已经反序列化的主数据仍需重新加载或重启游戏才会改变。
+
+也可安装 [anosu/BepInEx.ConfigurationManager](https://github.com/anosu/BepInEx.ConfigurationManager) 的 IL2CPP 版本，将发行包中的 `ConfigurationManager.dll` 和 `BepInEx.KeyboardShortcut.dll` 一起放入 `BepInEx/plugins`，按 **F1** 打开配置窗口。插件使用标准配置标签和编辑器，无需直接引用 ConfigurationManager 程序集。
+
+文本编辑在按 Enter、失去焦点或关闭窗口时提交，Escape 放弃当前草稿。CDN、字体路径和主数据表范围等选项位于高级设置。地址和路径会去除首尾空格；非 HTTP/HTTPS 地址、空路径回退到默认值。颜色保留旧十六进制存储格式，支持 RGB、RGBA、RRGGBB、RRGGBBAA，可带 `#`；无效颜色回退到默认值。
+
+窗口中修改帧率和不透明度会立即应用，修改 CDN/语言会刷新翻译会话，字体资源路径需重启生效；文本样式影响后续显示的文本。配置变更均记入日志，只有布尔开关显示提示，连续调整数值不会刷屏。
 
 ---
 
@@ -181,11 +186,13 @@ EnabledTables = *
 GCMod/
 ├── Core/                       # 核心模块
 │   ├── Plugin.cs               # BepInEx 插件入口，装配依赖
-│   ├── Config.cs               # 全局配置管理器
-│   ├── Hotkey.cs               # 快捷键处理（MonoBehaviour）
+│   ├── Config.cs               # 配置定义、元数据和变更通知
+│   ├── Acceptable*.cs          # 配置值校验与规范化
+│   ├── ConfigurationManagerAttributes.cs # 配置窗口标准显示标签
+│   ├── RuntimeController.cs    # 快捷键、主线程配置应用
 │   └── Logger.cs               # 统一日志封装
 ├── Patches/                    # Harmony 与原生补丁
-│   ├── PatchManager.cs         # 补丁管理器 & 共享工具
+│   ├── PatchManager.cs         # 补丁安装与卸载
 │   ├── TranslationPatch.cs     # 剧情翻译注入
 │   ├── VisualPatch.cs          # 文本样式与透明度
 │   ├── EnhancePatch.cs         # 帧率修改与大招跳过
@@ -198,8 +205,7 @@ GCMod/
 │   ├── TranslationPaths.cs     # 远程/本地路径构建
 │   ├── MasterDataTranslator.cs # 三种字段格式的主数据翻译
 │   ├── TranslationHash.cs      # 与翻译仓库一致的嵌套映射哈希
-│   ├── UpdateChecker.cs        # GitHub 新版本检查与提示
-│   └── AlphaController.cs      # 透明度控制工具
+│   └── UpdateChecker.cs        # GitHub 新版本检查与提示
 └── Models/
     └── Manifest.cs             # 翻译清单数据结构
 ```
@@ -209,6 +215,8 @@ GCMod/
 ## 🛠️ 开发指南
 
 开发环境、Utility 源码引用和 CSharpier 格式化见 [构建说明](https://github.com/anosu/ModEngineering/blob/main/docs/CONVENTIONS.md)。
+
+源码位于 `src/GCMod/`。`Core` 装配依赖并管理字体、HTTP 和配置生命周期；`Patches` 访问游戏对象；`Services` 管理翻译数据，通过注入的配置快照工作，不直接依赖 Unity 或全局配置。配置校验器只服务于配置绑定，因此留在 `Core`。卸载先撤销补丁，再取消翻译请求、停止字体协程并解除事件订阅；主数据回调执行期间拒绝卸载，避免留下无效的原生回调。
 
 ---
 
@@ -242,7 +250,7 @@ GCMod/
 
 `[]` 仅替换数组第 0 项；`|` 仅替换第一个分隔符前的文本；无后缀则替换完整字符串。其他语言、未声明字段、未命中原文、空译文均保持不变。字段规则在加载翻译表时预处理一次。修改翻译表后需用翻译仓库的 `scripts/build.py` 更新清单，再按 F10 刷新；已经加载的主数据通常仍需重启游戏。
 
-不依赖游戏环境的翻译与缓存测试：`dotnet test tests/GCMod.Tests/GCMod.Tests.csproj`。
+不依赖游戏环境的测试：`python shared/ModEngineering/scripts/project.py test`。`GCMod.Tests` 覆盖翻译、缓存和会话切换，`GCMod.Configuration.Tests` 使用真实 BepInEx 配置类验证旧配置兼容、值校验及主线程应用。Unity 宿主由测试替身隔离；游戏中的渲染、字体和原生补丁仍需实际验证。
 
 ---
 
@@ -275,7 +283,3 @@ GCMod/
 ---
 
 > 💬 遇到问题？欢迎提交 [Issue](https://github.com/anosu/GCMod/issues) 或直接在群里 @Jitsu。
-
-## 开发
-
-源码位于 `src/`，测试位于 `tests/`。项目配置由 `.csproj` 管理，依赖版本由 Git 子模块记录。构建、VS 联调和发布命令见[公共工程说明](https://github.com/anosu/ModEngineering/blob/main/docs/CONVENTIONS.md)。

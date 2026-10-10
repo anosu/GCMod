@@ -1,13 +1,14 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using BepInEx;
-using BepInEx.Configuration;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
+using BepInEx.Unity.IL2CPP.Utils.Collections;
 using GCMod.Patches;
 using GCMod.Services;
 using TMPro;
@@ -18,18 +19,20 @@ using Utility.Notifications;
 namespace GCMod;
 
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
-public class Plugin : BasePlugin
+public sealed class Plugin : BasePlugin
 {
     private const int HttpTimeoutSeconds = 30;
     private const int PooledConnectionLifetimeMinutes = 5;
     private const int PooledConnectionIdleTimeoutMinutes = 2;
     private static HttpClient _httpClient;
     private static CancellationTokenSource _updateCheckCancellation;
+    private static AssetBundleLoader<TMP_FontAsset> _font;
+    private static IEnumerator _fontLoad;
+    private static Coroutine _fontCoroutine;
 
-    public static ConfigFile ConfigFile;
-    public static new ManualLogSource Log;
-    public static MonoBehaviour Instance;
-    public static TranslationManager Trans;
+    internal static new ManualLogSource Log { get; private set; }
+    internal static MonoBehaviour Instance { get; private set; }
+    internal static TranslationManager Trans { get; private set; }
 
     public override void Load()
     {
@@ -46,18 +49,18 @@ public class Plugin : BasePlugin
 #endif
 
         Log = base.Log;
-        ConfigFile = base.Config;
         Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
 
         Toast.Initialize();
-        GCMod.Config.Initialize();
-        Instance = AddComponent<Hotkey>();
+        GCMod.Config.Initialize(base.Config);
+        Instance = AddComponent<RuntimeController>();
 
         try
         {
             Initialize();
             PatchManager.Initialize();
-            Trans.Initialize();
+            InitializeFont();
+            _ = Trans.LoadTranslationAsync();
         }
         catch
         {
@@ -92,10 +95,6 @@ public class Plugin : BasePlugin
             Timeout = TimeSpan.FromSeconds(HttpTimeoutSeconds),
         };
 
-        string path = GCMod.Config.FontBundlePath.Value;
-        string resolvedPath = Path.IsPathRooted(path) ? path : Path.Combine(Paths.PluginPath, path);
-
-        var font = new AssetBundleLoader<TMP_FontAsset>(resolvedPath);
         Trans = new TranslationManager(
             () =>
                 new TranslationCache(
@@ -104,10 +103,33 @@ public class Plugin : BasePlugin
                     GCMod.Config.TranslationLanguage.Value,
                     _httpClient
                 ),
-            font
+            () =>
+                new TranslationSettings(
+                    GCMod.Config.Translation.Value,
+                    GCMod.Config.AsyncMode.Value,
+                    GCMod.Config.MasterDataTables.Value
+                )
         );
         MasterDataPatch.JsonRewriter = (attribute, json) =>
             attribute == null ? json : Trans.TranslateMasterData(attribute.Object, json);
+    }
+
+    private static void InitializeFont()
+    {
+        string path = GCMod.Config.FontBundlePath.Value;
+        _font = new AssetBundleLoader<TMP_FontAsset>(
+            Path.IsPathRooted(path) ? path : Path.Combine(Paths.PluginPath, path)
+        );
+        _fontLoad = _font.Load(
+            () =>
+            {
+                if (!TMP_Settings.fallbackFontAssets.Contains(_font.Asset))
+                    TMP_Settings.fallbackFontAssets.Add(_font.Asset);
+                Logger.Info($"Font loaded: {_font.Asset.name}");
+            },
+            error => Logger.Error($"Font load failed: {error.Message}")
+        );
+        _fontCoroutine = Instance.StartCoroutine(_fontLoad.WrapToIl2Cpp());
     }
 
     public override bool Unload()
@@ -120,6 +142,21 @@ public class Plugin : BasePlugin
             return false;
         }
         Trans?.Dispose();
+        Trans = null;
+        if (Instance != null)
+        {
+            Instance.enabled = false;
+            if (_fontCoroutine != null)
+                Instance.StopCoroutine(_fontCoroutine);
+        }
+        (_fontLoad as IDisposable)?.Dispose();
+        if (_font?.IsLoaded == true)
+            TMP_Settings.fallbackFontAssets.Remove(_font.Asset);
+        _font = null;
+        _fontLoad = null;
+        _fontCoroutine = null;
+        GCMod.Config.Shutdown();
+        VisualPatch.Reset();
         MasterDataPatch.JsonRewriter = null;
         _updateCheckCancellation?.Cancel();
         _updateCheckCancellation?.Dispose();

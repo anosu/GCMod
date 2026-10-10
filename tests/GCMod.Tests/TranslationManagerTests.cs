@@ -3,8 +3,6 @@ using System.Text.Json;
 using DMM.OLG.Unity.Extensions.Novel;
 using GCMod.Patches;
 using GCMod.Services;
-using TMPro;
-using Utility.Assets;
 using Xunit;
 using static GCMod.Tests.TranslationReliabilityTests;
 
@@ -122,7 +120,12 @@ public sealed class TranslationManagerTests : IDisposable
     {
         var manager = new TranslationManager(
             () => new TranslationCache("http://local", _directory, "zh-Hans", client),
-            new AssetBundleLoader<TMP_FontAsset>()
+            () =>
+                new TranslationSettings(
+                    Config.Translation.Value,
+                    Config.AsyncMode.Value,
+                    Config.MasterDataTables.Value
+                )
         );
         Plugin.Trans = manager;
         return manager;
